@@ -1,5 +1,65 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as uuid from "https://deno.land/std@0.223.0/uuid/mod.ts";
+
+type ArtStylePreset = "storybook-cozy" | "watercolor-soft" | "travel-sketch";
+type CharacterSheet = {
+  leo: { age: number; hair: string; outfit: string; trait: string };
+  sasha: { age: number; hair: string; accessory: string; trait: string };
+};
+type ImagePromptSpec = {
+  stylePreset: ArtStylePreset;
+  scene: string;
+  landmarkDetail?: string;
+  mood: "joyful" | "curious" | "adventurous";
+  timeOfDay?: "morning" | "afternoon" | "golden hour";
+  consistencyTags: string[];
+};
+
+const CHARACTER_SHEET: CharacterSheet = {
+  leo: {
+    age: 8,
+    hair: "short brown",
+    outfit: "sporty travel wear",
+    trait: "soccer-loving",
+  },
+  sasha: {
+    age: 5,
+    hair: "long brown",
+    accessory: "unicorn hairclip",
+    trait: "unicorn-loving",
+  },
+};
+
+const STYLE_DESCRIPTIONS: Record<ArtStylePreset, string> = {
+  "storybook-cozy": "warm storybook illustration style with soft shading, gentle colors, inviting and cozy atmosphere",
+  "watercolor-soft": "delicate watercolor painting with flowing colors, soft edges, dreamy and ethereal quality",
+  "travel-sketch": "charming travel sketch style with loose linework, hand-drawn details, spontaneous and lively feel",
+};
+
+function buildImagePrompt(spec: ImagePromptSpec, kids: string[]): string {
+  const styleDesc = STYLE_DESCRIPTIONS[spec.stylePreset];
+  const characters: string[] = [];
+  
+  // Build character descriptions from character sheet
+  kids.forEach(kidName => {
+    const normalizedName = kidName.toLowerCase();
+    if (normalizedName === "leo" && CHARACTER_SHEET.leo) {
+      const leo = CHARACTER_SHEET.leo;
+      characters.push(`Leo (${leo.age} years old, ${leo.hair} hair, ${leo.outfit}, ${leo.trait})`);
+    } else if (normalizedName === "sasha" && CHARACTER_SHEET.sasha) {
+      const sasha = CHARACTER_SHEET.sasha;
+      characters.push(`Sasha (${sasha.age} years old, ${sasha.hair} hair, wearing ${sasha.accessory}, ${sasha.trait})`);
+    } else {
+      // Generic character description for other names
+      characters.push(`${kidName} (child traveler)`);
+    }
+  });
+
+  const characterDesc = characters.length > 0 ? characters.join(" and ") : "children";
+  const landmarkPart = spec.landmarkDetail ? `, featuring ${spec.landmarkDetail}` : "";
+  const timePart = spec.timeOfDay ? `, ${spec.timeOfDay} lighting` : "";
+  
+  return `${styleDesc}. Scene: ${spec.scene}${landmarkPart}. Characters: ${characterDesc}. Mood: ${spec.mood}${timePart}. ${spec.consistencyTags.join(", ")}`;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +72,16 @@ serve(async (req) => {
   }
 
   try {
-    const { destination, month, kids, interests, pages = 6, tone = "curious" } = await req.json();
+    const { 
+      destination, 
+      month, 
+      kids, 
+      interests, 
+      pages = 6, 
+      tone = "curious",
+      artStylePreset = "storybook-cozy" as ArtStylePreset
+    } = await req.json();
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -96,10 +165,23 @@ The final page should have a hopeful takeaway and a simple curiosity question.`,
     const outlineArgs = JSON.parse(outlineData.choices[0].message.tool_calls[0].function.arguments);
     const outline = outlineArgs.outline;
 
-    // Step B: Generate full text for each page
+    // Determine mood mapping from tone
+    const moodMap: Record<string, "joyful" | "curious" | "adventurous"> = {
+      curious: "curious",
+      adventurous: "adventurous",
+      silly: "joyful",
+    };
+    const baseMood = moodMap[tone] || "joyful";
+
+    // Step B: Generate full text and image prompts for each page
     const generatedPages = [];
     
-    for (const outlineItem of outline) {
+    for (let i = 0; i < outline.length; i++) {
+      const outlineItem = outline[i];
+      
+      // Determine time of day variation
+      const timeOfDay = i === 0 ? "morning" : i === outline.length - 1 ? "golden hour" : "afternoon";
+      
       const pageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -129,16 +211,17 @@ Context:
 
 Write 100-140 words of friendly, age-appropriate text that brings this page to life. Include sensory details, one cultural/historical nugget, and end with a curiosity question.
 
-Also create an imagePrompt for this page using these guidelines:
-- Style: warm picture-book, soft shading, joyful mood
-- Include specific landmark or setting detail
-- Mention character details if applicable
+Also identify:
+1. The main scene/setting for this page
+2. Any specific landmark or place mentioned
+3. Key visual details that would appear in an illustration
 
 Return JSON with this structure:
 {
   "heading": "The page heading",
   "text": "The 100-140 word story text",
-  "imagePrompt": "Description for the image"
+  "scene": "Brief description of the main scene/setting",
+  "landmarkDetail": "Specific landmark or place (if any, otherwise null)"
 }`,
             },
           ],
@@ -147,15 +230,16 @@ Return JSON with this structure:
               type: "function",
               function: {
                 name: "create_page",
-                description: "Creates a story page with heading, text, and image prompt",
+                description: "Creates a story page with heading, text, and scene details",
                 parameters: {
                   type: "object",
                   properties: {
                     heading: { type: "string" },
                     text: { type: "string" },
-                    imagePrompt: { type: "string" },
+                    scene: { type: "string" },
+                    landmarkDetail: { type: "string", nullable: true },
                   },
-                  required: ["heading", "text", "imagePrompt"],
+                  required: ["heading", "text", "scene"],
                 },
               },
             },
@@ -172,7 +256,30 @@ Return JSON with this structure:
 
       const pageData = await pageResponse.json();
       const pageArgs = JSON.parse(pageData.choices[0].message.tool_calls[0].function.arguments);
-      generatedPages.push(pageArgs);
+      
+      // Build structured image prompt spec
+      const imagePromptSpec: ImagePromptSpec = {
+        stylePreset: artStylePreset,
+        scene: pageArgs.scene,
+        landmarkDetail: pageArgs.landmarkDetail || undefined,
+        mood: baseMood,
+        timeOfDay: timeOfDay as "morning" | "afternoon" | "golden hour",
+        consistencyTags: [
+          "children's book illustration",
+          "friendly and approachable",
+          "high detail",
+          "vibrant colors",
+        ],
+      };
+      
+      // Build the final image prompt string
+      const imagePrompt = buildImagePrompt(imagePromptSpec, kids);
+      
+      generatedPages.push({
+        ...pageArgs,
+        imagePrompt,
+        imagePromptSpec,
+      });
     }
 
     const response = {
@@ -183,6 +290,7 @@ Return JSON with this structure:
       kids,
       interests,
       pages: generatedPages.length,
+      artStylePreset,
       outline,
       generatedPages,
     };

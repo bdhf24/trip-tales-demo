@@ -4,10 +4,24 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
 
+type ArtStylePreset = "storybook-cozy" | "watercolor-soft" | "travel-sketch";
+
+interface ImagePromptSpec {
+  stylePreset: ArtStylePreset;
+  scene: string;
+  landmarkDetail?: string;
+  mood: "joyful" | "curious" | "adventurous";
+  timeOfDay?: "morning" | "afternoon" | "golden hour";
+  consistencyTags: string[];
+}
+
 interface GeneratedPage {
   heading: string;
   text: string;
+  scene: string;
+  landmarkDetail?: string;
   imagePrompt: string;
+  imagePromptSpec: ImagePromptSpec;
 }
 
 interface StoryData {
@@ -18,6 +32,7 @@ interface StoryData {
   kids: string[];
   interests: string[];
   pages: number;
+  artStylePreset: ArtStylePreset;
   generatedPages: GeneratedPage[];
 }
 
@@ -115,13 +130,68 @@ const Story = () => {
             </div>
 
             {/* Image Prompt Details */}
-            <details className="mt-6 p-4 bg-muted rounded-xl">
-              <summary className="cursor-pointer font-semibold text-sm uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors">
-                View Image Prompt
+            <details className="mt-6 p-6 bg-muted rounded-xl">
+              <summary className="cursor-pointer font-semibold text-base uppercase tracking-wide text-foreground hover:text-primary transition-colors mb-4">
+                🎨 Illustration Prompt Details
               </summary>
-              <p className="mt-3 text-sm text-muted-foreground italic">
-                {page.imagePrompt}
-              </p>
+              
+              <div className="space-y-4 mt-4">
+                {/* Structured breakdown */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Style Preset</p>
+                    <p className="text-sm font-medium text-foreground capitalize">
+                      {page.imagePromptSpec.stylePreset.replace("-", " ")}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mood</p>
+                    <p className="text-sm font-medium text-foreground capitalize">{page.imagePromptSpec.mood}</p>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Time of Day</p>
+                    <p className="text-sm font-medium text-foreground capitalize">
+                      {page.imagePromptSpec.timeOfDay || "Not specified"}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Landmark</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {page.imagePromptSpec.landmarkDetail || "None"}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Scene</p>
+                  <p className="text-sm text-foreground">{page.imagePromptSpec.scene}</p>
+                </div>
+                
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Consistency Tags</p>
+                  <div className="flex flex-wrap gap-2">
+                    {page.imagePromptSpec.consistencyTags.map((tag, idx) => (
+                      <span key={idx} className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Final prompt string */}
+                <div className="space-y-2 pt-4 border-t border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Full Prompt</p>
+                  <textarea
+                    readOnly
+                    value={page.imagePrompt}
+                    className="w-full p-3 text-sm font-mono bg-background border border-border rounded-lg resize-none"
+                    rows={4}
+                  />
+                </div>
+              </div>
             </details>
           </div>
 

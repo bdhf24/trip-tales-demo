@@ -19,6 +19,12 @@ const TONES = [
   { value: "silly", label: "Silly" },
 ];
 
+const ART_STYLES = [
+  { value: "storybook-cozy", label: "Storybook Cozy" },
+  { value: "watercolor-soft", label: "Watercolor Soft" },
+  { value: "travel-sketch", label: "Travel Sketch" },
+];
+
 const NewStory = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -28,6 +34,7 @@ const NewStory = () => {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [pageCount, setPageCount] = useState(6);
   const [tone, setTone] = useState<"curious" | "adventurous" | "silly">("curious");
+  const [artStyle, setArtStyle] = useState<"storybook-cozy" | "watercolor-soft" | "travel-sketch">("storybook-cozy");
   const [isGenerating, setIsGenerating] = useState(false);
 
   const toggleInterest = (interest: string) => {
@@ -69,6 +76,7 @@ const NewStory = () => {
             interests: selectedInterests,
             pages: pageCount,
             tone,
+            artStylePreset: artStyle,
           }),
         }
       );
@@ -215,6 +223,25 @@ const NewStory = () => {
                       onClick={() => setTone(t.value as typeof tone)}
                     >
                       {t.label}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Art Style Field */}
+              <div className="space-y-3">
+                <Label className="text-lg font-semibold">
+                  Illustration style 🎨
+                </Label>
+                <div className="flex gap-3">
+                  {ART_STYLES.map((style) => (
+                    <Badge
+                      key={style.value}
+                      variant={artStyle === style.value ? "default" : "outline"}
+                      className="cursor-pointer text-base py-2 px-4 rounded-full flex-1 justify-center"
+                      onClick={() => setArtStyle(style.value as typeof artStyle)}
+                    >
+                      {style.label}
                     </Badge>
                   ))}
                 </div>
