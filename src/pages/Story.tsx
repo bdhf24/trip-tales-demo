@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Loader2, CheckCircle, XCircle, RotateCw, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, CheckCircle, XCircle, RotateCw, Sparkles, FileText, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -84,6 +84,9 @@ const Story = () => {
   const [availableKids, setAvailableKids] = useState<Kid[]>([]);
   const [isGuidanceOpen, setIsGuidanceOpen] = useState(false);
   const [pageReferences, setPageReferences] = useState<{ [pageId: string]: string[] }>({}); // pageId -> kidIds[]
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfFileSize, setPdfFileSize] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -487,6 +490,46 @@ const Story = () => {
     }
   };
 
+  const exportToPdf = async () => {
+    if (!id) return;
+
+    setIsExportingPdf(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("export-story-pdf", {
+        body: { storyId: id },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setPdfUrl(data.pdfUrl);
+      setPdfFileSize(data.fileSize);
+
+      toast({
+        title: data.cached ? "PDF Ready!" : "PDF Generated!",
+        description: data.cached 
+          ? "Using cached PDF from previous export"
+          : "Your storybook has been created successfully",
+      });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast({
+        title: "Export Failed",
+        description: error instanceof Error ? error.message : "Failed to export PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return "";
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(2)} MB`;
+  };
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -659,6 +702,62 @@ const Story = () => {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* PDF Export Section */}
+          <div className="mb-8 p-6 bg-card rounded-xl border border-border">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-lg">Export Storybook</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Download a high-quality PDF suitable for printing or sharing
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                {!pdfUrl ? (
+                  <Button
+                    onClick={exportToPdf}
+                    disabled={isExportingPdf}
+                    size="lg"
+                    className="whitespace-nowrap"
+                  >
+                    {isExportingPdf ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Preparing your storybook...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Export to PDF
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      asChild
+                      size="lg"
+                      className="whitespace-nowrap"
+                    >
+                      <a href={pdfUrl} target="_blank" rel="noopener noreferrer" download>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download PDF
+                      </a>
+                    </Button>
+                    {pdfFileSize && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        {formatFileSize(pdfFileSize)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Story Page Card */}

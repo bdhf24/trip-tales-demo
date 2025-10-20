@@ -134,6 +134,41 @@ export type Database = {
           },
         ]
       }
+      pdf_exports: {
+        Row: {
+          created_at: string
+          hash: string
+          id: string
+          pdf_url: string
+          story_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hash: string
+          id?: string
+          pdf_url: string
+          story_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hash?: string
+          id?: string
+          pdf_url?: string
+          story_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_exports_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reference_images: {
         Row: {
           created_at: string
