@@ -162,6 +162,15 @@ The final page should have a hopeful takeaway and a simple curiosity question.`,
     if (!outlineResponse.ok) {
       const errorText = await outlineResponse.text();
       console.error("Outline generation error:", outlineResponse.status, errorText);
+      
+      if (outlineResponse.status === 402) {
+        throw new Error("CREDITS_DEPLETED: Your Lovable AI credits have run out. Please add credits in Settings → Workspace → Usage to continue generating stories.");
+      }
+      
+      if (outlineResponse.status === 429) {
+        throw new Error("RATE_LIMITED: Too many requests. Please wait a moment and try again.");
+      }
+      
       throw new Error("Failed to generate story outline");
     }
 
@@ -255,6 +264,15 @@ Return JSON with this structure:
       if (!pageResponse.ok) {
         const errorText = await pageResponse.text();
         console.error(`Page ${outlineItem.page} generation error:`, pageResponse.status, errorText);
+        
+        if (pageResponse.status === 402) {
+          throw new Error("CREDITS_DEPLETED: Your Lovable AI credits ran out during story generation. Please add credits in Settings → Workspace → Usage.");
+        }
+        
+        if (pageResponse.status === 429) {
+          throw new Error("RATE_LIMITED: Too many requests. Please wait a moment and try again.");
+        }
+        
         throw new Error(`Failed to generate page ${outlineItem.page}`);
       }
 

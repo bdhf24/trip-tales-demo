@@ -92,12 +92,32 @@ const NewStory = () => {
       
       navigate(`/story/${data.storyId}`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate story";
+      
+      // Check for specific error types and provide user-friendly messages
+      if (errorMessage.includes("CREDITS_DEPLETED")) {
+        toast({
+          title: "AI Credits Required",
+          description: errorMessage.replace("CREDITS_DEPLETED: ", ""),
+          variant: "destructive",
+          duration: 8000,
+        });
+      } else if (errorMessage.includes("RATE_LIMITED")) {
+        toast({
+          title: "Rate Limited",
+          description: errorMessage.replace("RATE_LIMITED: ", ""),
+          variant: "destructive",
+          duration: 5000,
+        });
+      } else {
+        toast({
+          title: "Failed to generate story",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+      
       console.error("Error generating story:", error);
-      toast({
-        title: "Failed to generate story",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
     } finally {
       setIsGenerating(false);
     }
