@@ -194,12 +194,12 @@ const Story = () => {
     if (!story || !id) return;
 
     try {
-      // Get the page ID from the database
+      // Get the page ID from the database (pageNumber is the array index, add 1 for DB page_number)
       const { data: pageData } = await supabase
         .from('pages')
         .select('id')
         .eq('story_id', id)
-        .eq('page_number', pageNumber)
+        .eq('page_number', pageNumber + 1)
         .single();
 
       if (!pageData) {
@@ -244,7 +244,7 @@ const Story = () => {
         .from('pages')
         .select('id')
         .eq('story_id', id)
-        .eq('page_number', pageNumber)
+        .eq('page_number', pageNumber + 1)
         .single();
 
       if (!pageData) return;
