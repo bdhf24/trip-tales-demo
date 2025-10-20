@@ -305,14 +305,14 @@ Return JSON with this structure:
     }
 
     // Create story in database
-    const storyTitle = outline.map((p: any) => p.heading).join(' - ').slice(0, 100);
+    const storyTitle = outline[0]?.heading || `${kids.join(" and ")}'s Adventure in ${destination}`;
     const { data: storyRecord, error: storyError } = await supabase
       .from('stories')
       .insert({
         title: storyTitle,
         destination,
         month,
-        length: generatedPages.length,
+        length: generatedPages.length + 1, // +1 for title page
         tone,
         interests: typeof interests === 'string' ? interests.split(',').map(i => i.trim()) : interests,
         kids_json: kids,
@@ -329,14 +329,43 @@ Return JSON with this structure:
 
     const storyId = storyRecord.id;
 
-    // Save pages to database
+    // Create title page (page 1)
+    const titlePageImageSpec: ImagePromptSpec = {
+      stylePreset: artStylePreset,
+      scene: `Book cover showing ${destination} with decorative title page design`,
+      landmarkDetail: `iconic landmarks of ${destination}`,
+      mood: baseMood,
+      timeOfDay: "golden hour",
+      consistencyTags: [
+        "children's book cover",
+        "title page design",
+        "decorative border",
+        "travel theme",
+      ],
+    };
+
+    const titlePagePrompt = buildImagePrompt(titlePageImageSpec, kids);
+    const kidsText = kids.length > 1 ? kids.slice(0, -1).join(", ") + " and " + kids[kids.length - 1] : kids[0];
+
+    await supabase
+      .from('pages')
+      .insert({
+        story_id: storyId,
+        page_number: 1,
+        heading: storyTitle,
+        text: `A Travel Adventure Story\n\nFeaturing: ${kidsText}\n\nDestination: ${destination}\n\nTime: ${month}`,
+        image_prompt: titlePagePrompt,
+        image_prompt_spec: titlePageImageSpec
+      });
+
+    // Save story pages to database (starting from page 2)
     for (let i = 0; i < generatedPages.length; i++) {
       const page = generatedPages[i];
       const { error: pageError } = await supabase
         .from('pages')
         .insert({
           story_id: storyId,
-          page_number: i + 1,
+          page_number: i + 2, // Start from page 2
           heading: page.heading,
           text: page.text,
           image_prompt: page.imagePrompt,
@@ -344,7 +373,7 @@ Return JSON with this structure:
         });
 
       if (pageError) {
-        console.error(`Error saving page ${i + 1}:`, pageError);
+        console.error(`Error saving page ${i + 2}:`, pageError);
       }
     }
 

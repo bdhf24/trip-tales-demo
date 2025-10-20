@@ -663,90 +663,157 @@ const Story = () => {
 
           {/* Story Page Card */}
           <div className="bg-card rounded-3xl shadow-2xl p-6 md:p-10 mb-8 border-4 border-primary/20">
-            <h2 className="text-2xl md:text-3xl font-bold text-primary mb-6">
-              {page.heading}
-            </h2>
+            {currentPage === 0 ? (
+              // Title Page - Special Layout
+              <div className="text-center space-y-6 py-8">
+                <div className="space-y-4 mb-8">
+                  <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent leading-tight">
+                    {page.heading}
+                  </h2>
+                  <div className="flex justify-center">
+                    <div className="h-1 w-32 bg-gradient-to-r from-primary via-secondary to-accent rounded-full" />
+                  </div>
+                </div>
 
-            {/* Image */}
-            <div className="relative w-full aspect-video bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center border-4 border-dashed border-primary/30 overflow-hidden">
-              {page.imageUrl ? (
-                <>
-                  <img
-                    src={page.imageUrl}
-                    alt={page.heading}
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                  
-                  {/* Mark as Reference Button */}
-                  {availableKids.length > 0 && (
-                    <div className="absolute top-4 right-4 flex gap-2">
-                      {availableKids.map(kid => {
-                        const pageId = story.generatedPages[currentPage]?.imageUrl ? `page-${currentPage}` : null;
-                        const isMarked = pageId && pageReferences[pageId]?.includes(kid.id);
-                        
-                        return (
-                          <Button
-                            key={kid.id}
-                            size="sm"
-                            variant={isMarked ? "default" : "secondary"}
-                            onClick={() => {
-                              if (isMarked) {
-                                unmarkPageAsReference(currentPage, kid.id);
-                              } else {
-                                markPageAsReference(currentPage, kid.id);
-                              }
-                            }}
-                            className="shadow-lg"
-                          >
-                            <Sparkles className="h-3 w-3 mr-1" />
-                            {isMarked ? `✓ ${kid.name}` : `+ ${kid.name}`}
-                          </Button>
-                        );
-                      })}
+                {/* Title Page Image */}
+                <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center border-4 border-dashed border-primary/30 overflow-hidden">
+                  {page.imageUrl ? (
+                    <img
+                      src={page.imageUrl}
+                      alt={page.heading}
+                      className="w-full h-full object-cover rounded-xl"
+                    />
+                  ) : page.status === "generating" ? (
+                    <div className="text-center p-8">
+                      <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Creating cover illustration...
+                      </p>
+                    </div>
+                  ) : page.status === "failed" ? (
+                    <div className="text-center p-8">
+                      <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                      <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">
+                        Failed to generate cover
+                      </p>
+                      {page.error && (
+                        <p className="text-xs text-muted-foreground mb-4">{page.error}</p>
+                      )}
+                      <Button
+                        onClick={() => retryPageImage(currentPage)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <RotateCw className="mr-2 h-4 w-4" />
+                        Retry
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center p-8">
+                      <div className="text-6xl mb-4">📖</div>
+                      <p className="text-sm font-medium text-muted-foreground max-w-md">
+                        Click "Generate Images" above to create the cover
+                      </p>
                     </div>
                   )}
-                </>
-              ) : page.status === "generating" ? (
-                <div className="text-center p-8">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Generating illustration...
-                  </p>
                 </div>
-              ) : page.status === "failed" ? (
-                <div className="text-center p-8">
-                  <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">
-                    Failed to generate image
-                  </p>
-                  {page.error && (
-                    <p className="text-xs text-muted-foreground mb-4">{page.error}</p>
-                  )}
-                  <Button
-                    onClick={() => retryPageImage(currentPage)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <RotateCw className="mr-2 h-4 w-4" />
-                    Retry
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center p-8">
-                  <div className="text-6xl mb-4">🖼️</div>
-                  <p className="text-sm font-medium text-muted-foreground max-w-md">
-                    Click "Generate Images" above to create illustrations
-                  </p>
-                </div>
-              )}
-            </div>
 
-            {/* Story Content */}
-            <div className="prose prose-lg max-w-none mb-6">
-              <p className="text-lg md:text-xl leading-relaxed text-foreground whitespace-pre-wrap">
-                {page.text}
-              </p>
-            </div>
+                {/* Title Page Content */}
+                <div className="prose prose-lg max-w-none">
+                  <p className="text-xl md:text-2xl leading-relaxed text-foreground whitespace-pre-wrap font-medium">
+                    {page.text}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // Regular Story Page
+              <>
+                <h2 className="text-2xl md:text-3xl font-bold text-primary mb-6">
+                  {page.heading}
+                </h2>
+
+                {/* Image */}
+                <div className="relative w-full aspect-video bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center border-4 border-dashed border-primary/30 overflow-hidden">
+                  {page.imageUrl ? (
+                    <>
+                      <img
+                        src={page.imageUrl}
+                        alt={page.heading}
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                      
+                      {/* Mark as Reference Button */}
+                      {availableKids.length > 0 && (
+                        <div className="absolute top-4 right-4 flex gap-2">
+                          {availableKids.map(kid => {
+                            const pageId = story.generatedPages[currentPage]?.imageUrl ? `page-${currentPage}` : null;
+                            const isMarked = pageId && pageReferences[pageId]?.includes(kid.id);
+                            
+                            return (
+                              <Button
+                                key={kid.id}
+                                size="sm"
+                                variant={isMarked ? "default" : "secondary"}
+                                onClick={() => {
+                                  if (isMarked) {
+                                    unmarkPageAsReference(currentPage, kid.id);
+                                  } else {
+                                    markPageAsReference(currentPage, kid.id);
+                                  }
+                                }}
+                                className="shadow-lg"
+                              >
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                {isMarked ? `✓ ${kid.name}` : `+ ${kid.name}`}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  ) : page.status === "generating" ? (
+                    <div className="text-center p-8">
+                      <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Generating illustration...
+                      </p>
+                    </div>
+                  ) : page.status === "failed" ? (
+                    <div className="text-center p-8">
+                      <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                      <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">
+                        Failed to generate image
+                      </p>
+                      {page.error && (
+                        <p className="text-xs text-muted-foreground mb-4">{page.error}</p>
+                      )}
+                      <Button
+                        onClick={() => retryPageImage(currentPage)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <RotateCw className="mr-2 h-4 w-4" />
+                        Retry
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center p-8">
+                      <div className="text-6xl mb-4">🖼️</div>
+                      <p className="text-sm font-medium text-muted-foreground max-w-md">
+                        Click "Generate Images" above to create illustrations
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Story Content */}
+                <div className="prose prose-lg max-w-none mb-6">
+                  <p className="text-lg md:text-xl leading-relaxed text-foreground whitespace-pre-wrap">
+                    {page.text}
+                  </p>
+                </div>
+              </>
+            )}
 
             {/* Image Prompt Details */}
             <details className="mt-6 p-6 bg-muted rounded-xl">
