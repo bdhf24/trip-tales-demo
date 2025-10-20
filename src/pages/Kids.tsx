@@ -15,6 +15,7 @@ interface Kid {
   name: string;
   age: number;
   descriptor: string | null;
+  appearance_notes: string | null;
   photoCount: number;
   createdAt: string;
 }
@@ -26,13 +27,32 @@ interface KidPhoto {
   created_at: string;
 }
 
+interface ReferenceImage {
+  id: string;
+  page_id: string;
+  notes: string | null;
+  created_at: string;
+  pages: {
+    id: string;
+    image_url: string;
+    heading: string;
+    page_number: number;
+    story_id: string;
+    stories: {
+      title: string;
+    };
+  };
+}
+
 const Kids = () => {
   const [kids, setKids] = useState<Kid[]>([]);
   const [selectedKid, setSelectedKid] = useState<Kid | null>(null);
   const [photos, setPhotos] = useState<KidPhoto[]>([]);
+  const [references, setReferences] = useState<ReferenceImage[]>([]);
   const [newKidName, setNewKidName] = useState('');
   const [newKidAge, setNewKidAge] = useState('');
   const [editingDescriptor, setEditingDescriptor] = useState('');
+  const [editingAppearanceNotes, setEditingAppearanceNotes] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -84,18 +104,27 @@ const Kids = () => {
   const openKidDetails = async (kid: Kid) => {
     setSelectedKid(kid);
     setEditingDescriptor(kid.descriptor || '');
+    setEditingAppearanceNotes(kid.appearance_notes || '');
     
     try {
-      const { data, error } = await supabase.functions.invoke('kids-get', {
-        body: { kidId: kid.id }
-      });
+      const [photosResponse, referencesResponse] = await Promise.all([
+        supabase.functions.invoke('kids-get', {
+          body: { kidId: kid.id }
+        }),
+        supabase.functions.invoke('get-kid-references', {
+          body: { kidId: kid.id }
+        })
+      ]);
 
-      if (error) throw error;
-      setPhotos(data.photos || []);
+      if (photosResponse.error) throw photosResponse.error;
+      if (referencesResponse.error) throw referencesResponse.error;
+      
+      setPhotos(photosResponse.data.photos || []);
+      setReferences(referencesResponse.data.references || []);
       setShowDetailsDialog(true);
     } catch (error) {
       console.error('Error fetching kid details:', error);
-      toast.error('Failed to load photos');
+      toast.error('Failed to load kid data');
     }
   };
 
@@ -178,16 +207,37 @@ const Kids = () => {
 
     try {
       const { error } = await supabase.functions.invoke('kids-update', {
-        body: { kidId: selectedKid.id, descriptor: editingDescriptor }
+        body: { 
+          kidId: selectedKid.id, 
+          descriptor: editingDescriptor,
+          appearance_notes: editingAppearanceNotes 
+        }
       });
 
       if (error) throw error;
       
-      toast.success('Descriptor updated!');
+      toast.success('Profile updated!');
       fetchKids();
     } catch (error) {
-      console.error('Error updating descriptor:', error);
-      toast.error('Failed to update descriptor');
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    }
+  };
+
+  const deleteReference = async (refId: string) => {
+    if (!selectedKid) return;
+
+    try {
+      await supabase
+        .from('reference_images')
+        .delete()
+        .eq('id', refId);
+      
+      toast.success('Reference removed');
+      openKidDetails(selectedKid);
+    } catch (error) {
+      console.error('Error deleting reference:', error);
+      toast.error('Failed to delete reference');
     }
   };
 
@@ -330,6 +380,40 @@ const Kids = () => {
                     </div>
                   </div>
 
+                  {/* Reference Gallery */}
+                  {references.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold mb-3">Character References ({references.length})</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        {references.map((ref) => (
+                          <div key={ref.id} className="relative group">
+                            <img
+                              src={ref.pages.image_url}
+                              alt={`Reference from ${ref.pages.stories.title}`}
+                              className="w-full h-40 object-cover rounded"
+                            />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex flex-col items-center justify-center p-2 text-white text-xs">
+                              <p className="font-semibold">{ref.pages.stories.title}</p>
+                              <p>Page {ref.pages.page_number}</p>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="mt-2"
+                                onClick={() => deleteReference(ref.id)}
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        These story pages are used as additional references for consistent character appearance
+                      </p>
+                    </div>
+                  )}
+
                   {/* Descriptor Section */}
                   <div>
                     <div className="flex justify-between items-center mb-3">
@@ -350,11 +434,26 @@ const Kids = () => {
                       rows={4}
                       className="mb-2"
                     />
-                    <Button size="sm" onClick={updateDescriptor}>
-                      Save Descriptor
-                    </Button>
                     <p className="text-xs text-muted-foreground mt-2">
                       This descriptor will be used in story image prompts for better character consistency
+                    </p>
+                  </div>
+
+                  {/* Appearance Notes Section */}
+                  <div>
+                    <h3 className="font-semibold mb-3">Appearance Notes (Optional)</h3>
+                    <Textarea
+                      value={editingAppearanceNotes}
+                      onChange={(e) => setEditingAppearanceNotes(e.target.value)}
+                      placeholder="e.g., 'Leo should have shorter hair', 'Sasha's eyes should be bigger', 'warmer skin tone'"
+                      rows={3}
+                      className="mb-2"
+                    />
+                    <Button size="sm" onClick={updateDescriptor}>
+                      Save Changes
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Add specific feedback about how the character should look. These notes will enhance future image generation.
                     </p>
                   </div>
 

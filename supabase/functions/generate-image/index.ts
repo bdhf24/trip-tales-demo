@@ -87,19 +87,30 @@ serve(async (req) => {
     let usedGuidance = false;
 
     // If guidance is enabled and we have reference images
-    if (guidance?.enabled && guidance?.kidRefs && guidance.kidRefs.length > 0) {
-      console.log(`Using photo guidance with ${guidance.kidRefs.length} reference images`);
+    if (guidance?.enabled && guidance?.results && guidance.results.length > 0) {
+      console.log(`Using photo guidance with ${guidance.results.length} kids`);
+      
+      // Enhance prompt with appearance notes and descriptors
+      let enhancedPrompt = sanitized;
+      for (const kidRef of guidance.results) {
+        if (kidRef.appearanceNotes) {
+          enhancedPrompt += `\n\nCharacter appearance notes for ${kidRef.kidName}: ${kidRef.appearanceNotes}`;
+        }
+        if (kidRef.descriptor) {
+          enhancedPrompt += `\n\nCharacter description for ${kidRef.kidName}: ${kidRef.descriptor}`;
+        }
+      }
       
       // Build a multi-part message with text + reference images
       const contentParts: any[] = [
         {
           type: "text",
-          text: `Create an illustration based on this description: ${sanitized}\n\nUse the provided reference images to ensure character likeness (strength: ${guidance.strength || 0.45}). Match the hair, facial features, skin tone, and general appearance from the references.`
+          text: `${enhancedPrompt}\n\nUse the provided reference images to ensure character likeness (strength: ${guidance.strength || 0.45}). Match the hair, facial features, skin tone, and general appearance from the references.`
         }
       ];
 
-      // Add reference images
-      for (const kidRef of guidance.kidRefs) {
+      // Add reference images (both photos and story pages)
+      for (const kidRef of guidance.results) {
         for (const ref of kidRef.refs) {
           contentParts.push({
             type: "image_url",
@@ -112,6 +123,7 @@ serve(async (req) => {
 
       messageContent = contentParts;
       usedGuidance = true;
+      console.log(`Enhanced prompt with appearance notes and ${contentParts.length - 1} reference images`);
     }
 
     // Generate image using Lovable AI (Nano banana)

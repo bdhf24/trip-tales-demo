@@ -36,5 +36,14 @@ verify_jwt = false
 [functions.prepare-kid-refs]
 verify_jwt = false
 
+[functions.mark-page-as-reference]
+verify_jwt = false
+
+[functions.unmark-page-reference]
+verify_jwt = false
+
+[functions.get-kid-references]
+verify_jwt = false
+
 [functions.stories-get]
 verify_jwt = false

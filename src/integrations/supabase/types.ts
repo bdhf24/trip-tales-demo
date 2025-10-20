@@ -49,6 +49,7 @@ export type Database = {
       kids: {
         Row: {
           age: number
+          appearance_notes: string | null
           created_at: string
           descriptor: string | null
           id: string
@@ -58,6 +59,7 @@ export type Database = {
         }
         Insert: {
           age: number
+          appearance_notes?: string | null
           created_at?: string
           descriptor?: string | null
           id?: string
@@ -67,6 +69,7 @@ export type Database = {
         }
         Update: {
           age?: number
+          appearance_notes?: string | null
           created_at?: string
           descriptor?: string | null
           id?: string
@@ -127,6 +130,45 @@ export type Database = {
             columns: ["story_id"]
             isOneToOne: false
             referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reference_images: {
+        Row: {
+          created_at: string
+          id: string
+          kid_id: string
+          notes: string | null
+          page_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kid_id: string
+          notes?: string | null
+          page_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kid_id?: string
+          notes?: string | null
+          page_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reference_images_kid_id_fkey"
+            columns: ["kid_id"]
+            isOneToOne: false
+            referencedRelation: "kids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reference_images_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "pages"
             referencedColumns: ["id"]
           },
         ]

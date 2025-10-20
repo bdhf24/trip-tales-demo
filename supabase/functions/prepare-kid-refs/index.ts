@@ -53,6 +53,20 @@ serve(async (req) => {
     const results = [];
 
     for (const kidId of kidIds) {
+      const refs = [];
+      
+      // Fetch kid data to get appearance_notes and descriptor
+      const { data: kidData, error: kidError } = await supabase
+        .from('kids')
+        .select('id, name, descriptor, appearance_notes')
+        .eq('id', kidId)
+        .single();
+      
+      if (kidError) {
+        console.error(`Error fetching kid data for ${kidId}:`, kidError);
+        continue;
+      }
+      
       // Fetch photos for this kid
       const { data: photos, error: photosError } = await supabase
         .from('kid_photos')
@@ -62,49 +76,82 @@ serve(async (req) => {
 
       if (photosError) {
         console.error(`Error fetching photos for kid ${kidId}:`, photosError);
-        continue;
-      }
+      } else if (photos && photos.length > 0) {
+        let selectedPhotos = photos;
 
-      if (!photos || photos.length === 0) {
-        continue;
-      }
+        // Apply selection strategy
+        if (refStrategy === 'manual-pick' && selectedPhotoIds && selectedPhotoIds.length > 0) {
+          selectedPhotos = photos.filter(p => selectedPhotoIds.includes(p.id));
+        }
 
-      let selectedPhotos = photos;
+        // Limit to maxRef
+        selectedPhotos = selectedPhotos.slice(0, maxRef);
 
-      // Apply selection strategy
-      if (refStrategy === 'manual-pick' && selectedPhotoIds && selectedPhotoIds.length > 0) {
-        selectedPhotos = photos.filter(p => selectedPhotoIds.includes(p.id));
-      }
-
-      // Limit to maxRef
-      selectedPhotos = selectedPhotos.slice(0, maxRef);
-
-      // Process photos
-      const refs = await Promise.all(
-        selectedPhotos.map(async (photo) => {
+        // Process photos
+        for (const photo of selectedPhotos) {
           let url = photo.image_url;
           
-          // Downscale if requested
+          // Downscale if requested (placeholder for now)
           if (!sendOriginals && downscale) {
             url = await downscaleImage(photo.image_url, downscale);
           }
 
-          return {
+          refs.push({
             photoId: photo.id,
             url,
-            kidId
-          };
-        })
-      );
+            type: 'photo'
+          });
+        }
+      }
+
+      // Fetch reference story pages for this kid
+      const { data: references, error: refError } = await supabase
+        .from('reference_images')
+        .select(`
+          id,
+          pages!inner (
+            id,
+            image_url
+          )
+        `)
+        .eq('kid_id', kidId)
+        .order('created_at', { ascending: false })
+        .limit(maxRef);
+
+      if (refError) {
+        console.error(`Error fetching references for kid ${kidId}:`, refError);
+      } else if (references && references.length > 0) {
+        for (const ref of references) {
+          const page = ref.pages as any;
+          if (page && page.image_url) {
+            refs.push({
+              photoId: ref.id,
+              url: page.image_url,
+              type: 'story_page'
+            });
+          }
+        }
+      }
+
+      if (refs.length === 0) {
+        console.log(`No photos or references found for kid ${kidId}`);
+        continue;
+      }
+
+      // Limit total refs to maxRef
+      const limitedRefs = refs.slice(0, maxRef);
 
       results.push({
-        kidId,
-        refs
+        kidId: kidData.id,
+        kidName: kidData.name,
+        descriptor: kidData.descriptor,
+        appearanceNotes: kidData.appearance_notes,
+        refs: limitedRefs
       });
     }
 
     return new Response(
-      JSON.stringify({ kidRefs: results }),
+      JSON.stringify({ results }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

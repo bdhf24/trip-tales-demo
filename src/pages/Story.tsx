@@ -83,6 +83,7 @@ const Story = () => {
   });
   const [availableKids, setAvailableKids] = useState<Kid[]>([]);
   const [isGuidanceOpen, setIsGuidanceOpen] = useState(false);
+  const [pageReferences, setPageReferences] = useState<{ [pageId: string]: string[] }>({}); // pageId -> kidIds[]
 
   useEffect(() => {
     if (!id) {
@@ -153,6 +154,125 @@ const Story = () => {
       localStorage.setItem(`guidance-${id}`, JSON.stringify(guidanceSettings));
     }
   }, [guidanceSettings, id]);
+
+  // Load page references
+  const loadPageReferences = async () => {
+    if (!id) return;
+    
+    try {
+      const { data: pagesData } = await supabase
+        .from('pages')
+        .select('id')
+        .eq('story_id', id);
+      
+      if (!pagesData) return;
+
+      const refMap: { [pageId: string]: string[] } = {};
+      
+      for (const page of pagesData) {
+        const { data: refs } = await supabase
+          .from('reference_images')
+          .select('kid_id')
+          .eq('page_id', page.id);
+        
+        if (refs && refs.length > 0) {
+          refMap[page.id] = refs.map(r => r.kid_id);
+        }
+      }
+      
+      setPageReferences(refMap);
+    } catch (error) {
+      console.error('Error loading page references:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadPageReferences();
+  }, [id]);
+
+  const markPageAsReference = async (pageNumber: number, kidId: string) => {
+    if (!story || !id) return;
+
+    try {
+      // Get the page ID from the database
+      const { data: pageData } = await supabase
+        .from('pages')
+        .select('id')
+        .eq('story_id', id)
+        .eq('page_number', pageNumber)
+        .single();
+
+      if (!pageData) {
+        toast({
+          title: "Error",
+          description: "Could not find page in database",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase.functions.invoke('mark-page-as-reference', {
+        body: {
+          kidId,
+          pageId: pageData.id,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Page marked as character reference",
+      });
+
+      await loadPageReferences();
+    } catch (error) {
+      console.error('Error marking page as reference:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to mark as reference",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const unmarkPageAsReference = async (pageNumber: number, kidId: string) => {
+    if (!story || !id) return;
+
+    try {
+      const { data: pageData } = await supabase
+        .from('pages')
+        .select('id')
+        .eq('story_id', id)
+        .eq('page_number', pageNumber)
+        .single();
+
+      if (!pageData) return;
+
+      const { error } = await supabase.functions.invoke('unmark-page-reference', {
+        body: {
+          kidId,
+          pageId: pageData.id,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Reference removed",
+      });
+
+      await loadPageReferences();
+    } catch (error) {
+      console.error('Error unmarking reference:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove reference",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (!story) {
     return (
@@ -228,10 +348,10 @@ const Story = () => {
               title: "Warning",
               description: "Could not load reference photos. Using descriptor-only generation.",
             });
-          } else if (kidRefsData?.kidRefs && kidRefsData.kidRefs.length > 0) {
+          } else if (kidRefsData?.results && kidRefsData.results.length > 0) {
             guidance = {
               enabled: true,
-              kidRefs: kidRefsData.kidRefs,
+              results: kidRefsData.results,
               strength: guidanceSettings.strength,
             };
           }
@@ -550,11 +670,42 @@ const Story = () => {
             {/* Image */}
             <div className="relative w-full aspect-video bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center border-4 border-dashed border-primary/30 overflow-hidden">
               {page.imageUrl ? (
-                <img
-                  src={page.imageUrl}
-                  alt={page.heading}
-                  className="w-full h-full object-cover rounded-xl"
-                />
+                <>
+                  <img
+                    src={page.imageUrl}
+                    alt={page.heading}
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                  
+                  {/* Mark as Reference Button */}
+                  {availableKids.length > 0 && (
+                    <div className="absolute top-4 right-4 flex gap-2">
+                      {availableKids.map(kid => {
+                        const pageId = story.generatedPages[currentPage]?.imageUrl ? `page-${currentPage}` : null;
+                        const isMarked = pageId && pageReferences[pageId]?.includes(kid.id);
+                        
+                        return (
+                          <Button
+                            key={kid.id}
+                            size="sm"
+                            variant={isMarked ? "default" : "secondary"}
+                            onClick={() => {
+                              if (isMarked) {
+                                unmarkPageAsReference(currentPage, kid.id);
+                              } else {
+                                markPageAsReference(currentPage, kid.id);
+                              }
+                            }}
+                            className="shadow-lg"
+                          >
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            {isMarked ? `✓ ${kid.name}` : `+ ${kid.name}`}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               ) : page.status === "generating" ? (
                 <div className="text-center p-8">
                   <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
