@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      image_library: {
+        Row: {
+          art_style: string
+          characters: Json
+          created_at: string | null
+          id: string
+          image_url: string
+          landmark: string | null
+          last_reused_at: string | null
+          location: string | null
+          mood: string
+          page_id: string | null
+          quality_score: number | null
+          reuse_count: number | null
+          scene_type: string
+          tags: string[] | null
+          time_of_day: string | null
+          user_rating: number | null
+        }
+        Insert: {
+          art_style: string
+          characters: Json
+          created_at?: string | null
+          id?: string
+          image_url: string
+          landmark?: string | null
+          last_reused_at?: string | null
+          location?: string | null
+          mood: string
+          page_id?: string | null
+          quality_score?: number | null
+          reuse_count?: number | null
+          scene_type: string
+          tags?: string[] | null
+          time_of_day?: string | null
+          user_rating?: number | null
+        }
+        Update: {
+          art_style?: string
+          characters?: Json
+          created_at?: string | null
+          id?: string
+          image_url?: string
+          landmark?: string | null
+          last_reused_at?: string | null
+          location?: string | null
+          mood?: string
+          page_id?: string | null
+          quality_score?: number | null
+          reuse_count?: number | null
+          scene_type?: string
+          tags?: string[] | null
+          time_of_day?: string | null
+          user_rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_library_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: true
+            referencedRelation: "pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kid_photos: {
         Row: {
           created_at: string
@@ -211,9 +276,13 @@ export type Database = {
       stories: {
         Row: {
           art_style: string
+          cost_saved: number | null
           created_at: string
           destination: string
+          estimated_cost: number | null
           id: string
+          images_generated: number | null
+          images_reused: number | null
           interests: string[]
           kids_json: Json
           length: number
@@ -226,9 +295,13 @@ export type Database = {
         }
         Insert: {
           art_style: string
+          cost_saved?: number | null
           created_at?: string
           destination: string
+          estimated_cost?: number | null
           id?: string
+          images_generated?: number | null
+          images_reused?: number | null
           interests?: string[]
           kids_json: Json
           length: number
@@ -241,9 +314,13 @@ export type Database = {
         }
         Update: {
           art_style?: string
+          cost_saved?: number | null
           created_at?: string
           destination?: string
+          estimated_cost?: number | null
           id?: string
+          images_generated?: number | null
+          images_reused?: number | null
           interests?: string[]
           kids_json?: Json
           length?: number

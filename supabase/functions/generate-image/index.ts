@@ -199,14 +199,44 @@ serve(async (req) => {
       .getPublicUrl(fileName);
 
     // Update page with image URL
-    const { error: updateError } = await supabase
+    const { data: updatedPage, error: updateError } = await supabase
       .from('pages')
       .update({ image_url: publicUrl })
       .eq('story_id', storyId)
-      .eq('page_number', pageNumber);
+      .eq('page_number', pageNumber)
+      .select('id, image_prompt_spec, story:stories(art_style)')
+      .single();
 
     if (updateError) {
       console.error('Error updating page with image URL:', updateError);
+    }
+
+    // Add to image library for future reuse
+    if (updatedPage && updatedPage.image_prompt_spec) {
+      try {
+        const story = (updatedPage.story as any)?.[0];
+        const addToLibraryResponse = await fetch(`${SUPABASE_URL}/functions/v1/add-to-library`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            pageId: updatedPage.id,
+            imageUrl: publicUrl,
+            imagePromptSpec: updatedPage.image_prompt_spec,
+            artStyle: story?.art_style || 'storybook-cozy'
+          })
+        });
+
+        if (addToLibraryResponse.ok) {
+          console.log('Successfully added image to library');
+        } else {
+          console.warn('Failed to add image to library:', await addToLibraryResponse.text());
+        }
+      } catch (libraryError) {
+        console.warn('Error adding to library (non-critical):', libraryError);
+      }
     }
 
     console.log(`Successfully generated and uploaded image: ${publicUrl}`);

@@ -8,11 +8,13 @@ const corsHeaders = {
 interface PageRequest {
   pageNumber: number;
   imagePrompt: string;
+  imagePromptSpec?: any;
 }
 
 interface GenerateAllRequest {
   storyId: string;
   pages: PageRequest[];
+  artStyle: string;
   size?: string;
   format?: string;
   guidance?: any;
@@ -26,21 +28,85 @@ async function generateImageWithRetry(
   storyId: string,
   pageNumber: number,
   imagePrompt: string,
+  imagePromptSpec: any,
   size: string,
   format: string,
+  artStyle: string,
   maxRetries = 2,
   guidance?: any
-): Promise<{ pageNumber: number; imageUrl?: string; error?: string; usedGuidance?: boolean }> {
+): Promise<{ pageNumber: number; imageUrl?: string; error?: string; usedGuidance?: boolean; reused?: boolean }> {
   const delays = [1000, 3000]; // 1s, then 3s
   
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("Supabase configuration missing");
+  }
+
+  // First, check the image library for a matching image
+  try {
+    console.log(`Checking image library for page ${pageNumber}...`);
+    const libraryResponse = await fetch(`${SUPABASE_URL}/functions/v1/search-image-library`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        characters: imagePromptSpec.characters?.map((c: any) => c.kidName) || [],
+        scene: imagePromptSpec.scene || '',
+        location: imagePromptSpec.location,
+        landmark: imagePromptSpec.landmarkDetail,
+        mood: imagePromptSpec.mood || 'joyful',
+        timeOfDay: imagePromptSpec.timeOfDay,
+        artStyle: artStyle,
+        minQuality: 0.5
+      })
+    });
+
+    if (libraryResponse.ok) {
+      const libraryData = await libraryResponse.json();
+      const topMatch = libraryData.matches?.[0];
+      
+      // If we found a good match (score >= 70), reuse it
+      if (topMatch && topMatch.matchScore >= 70) {
+        console.log(`Found library match for page ${pageNumber} (score: ${topMatch.matchScore})`);
+        
+        // Update the page with the reused image URL
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        
+        await supabase
+          .from('pages')
+          .update({ image_url: topMatch.imageUrl })
+          .eq('story_id', storyId)
+          .eq('page_number', pageNumber);
+
+        // Increment reuse count and update last_reused_at
+        await supabase
+          .from('image_library')
+          .update({ 
+            reuse_count: topMatch.reuseCount + 1,
+            last_reused_at: new Date().toISOString()
+          })
+          .eq('id', topMatch.id);
+
+        return {
+          pageNumber,
+          imageUrl: topMatch.imageUrl,
+          reused: true,
+          usedGuidance: false
+        };
+      }
+    }
+  } catch (libraryError) {
+    console.warn(`Library check failed for page ${pageNumber} (non-critical):`, libraryError);
+  }
+
+  // No library match, proceed with generation
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       console.log(`Generating image for page ${pageNumber}, attempt ${attempt + 1}`);
-      
-      const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-      if (!SUPABASE_URL) {
-        throw new Error("SUPABASE_URL not configured");
-      }
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-image`, {
         method: "POST",
@@ -72,7 +138,7 @@ async function generateImageWithRetry(
 
       const data = await response.json();
       console.log(`Successfully generated image for page ${pageNumber}`);
-      return { pageNumber, imageUrl: data.imageUrl, usedGuidance: data.usedGuidance };
+      return { pageNumber, imageUrl: data.imageUrl, usedGuidance: data.usedGuidance, reused: false };
 
     } catch (error) {
       console.error(`Error generating image for page ${pageNumber}, attempt ${attempt + 1}:`, error);
@@ -113,7 +179,7 @@ serve(async (req) => {
   }
 
   try {
-    const { storyId, pages, size = "1024x1024", format = "png", guidance } = await req.json() as GenerateAllRequest;
+    const { storyId, pages, artStyle, size = "1024x1024", format = "png", guidance } = await req.json() as GenerateAllRequest;
     
     if (!storyId || !pages || !Array.isArray(pages)) {
       return new Response(
@@ -122,9 +188,11 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Starting sequential generation for ${pages.length} pages`);
+    console.log(`Starting sequential generation for ${pages.length} pages with library check`);
     
     const results = [];
+    let imagesGenerated = 0;
+    let imagesReused = 0;
     
     // Generate images sequentially (concurrency = 1)
     for (const page of pages) {
@@ -132,18 +200,59 @@ serve(async (req) => {
         storyId,
         page.pageNumber,
         page.imagePrompt,
+        page.imagePromptSpec || {},
         size,
         format,
+        artStyle,
         2,
         guidance
       );
       results.push(result);
+      
+      if (result.reused) {
+        imagesReused++;
+      } else if (result.imageUrl) {
+        imagesGenerated++;
+      }
     }
 
-    console.log(`Completed generation for all ${pages.length} pages`);
+    console.log(`Completed: ${imagesGenerated} generated, ${imagesReused} reused from library`);
+
+    // Update story cost tracking
+    const COST_PER_IMAGE = 0.40;
+    const costSaved = imagesReused * COST_PER_IMAGE;
+    const estimatedCost = imagesGenerated * COST_PER_IMAGE;
+
+    try {
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        await supabase
+          .from('stories')
+          .update({
+            images_generated: imagesGenerated,
+            images_reused: imagesReused,
+            estimated_cost: estimatedCost,
+            cost_saved: costSaved
+          })
+          .eq('id', storyId);
+      }
+    } catch (updateError) {
+      console.warn('Failed to update story cost tracking:', updateError);
+    }
 
     return new Response(
-      JSON.stringify({ results }),
+      JSON.stringify({ 
+        results,
+        stats: {
+          imagesGenerated,
+          imagesReused,
+          estimatedCost: estimatedCost.toFixed(2),
+          costSaved: costSaved.toFixed(2)
+        }
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

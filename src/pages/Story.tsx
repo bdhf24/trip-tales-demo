@@ -87,6 +87,12 @@ const Story = () => {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfFileSize, setPdfFileSize] = useState<number | null>(null);
+  const [costStats, setCostStats] = useState<{
+    imagesGenerated: number;
+    imagesReused: number;
+    estimatedCost: number;
+    costSaved: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -124,6 +130,16 @@ const Story = () => {
         };
 
         setStory(loadedStory);
+        
+        // Load cost stats if available
+        if (data.story.images_generated !== undefined) {
+          setCostStats({
+            imagesGenerated: data.story.images_generated || 0,
+            imagesReused: data.story.images_reused || 0,
+            estimatedCost: parseFloat(data.story.estimated_cost || 0),
+            costSaved: parseFloat(data.story.cost_saved || 0),
+          });
+        }
 
         // Load saved guidance settings from localStorage
         const savedSettings = localStorage.getItem(`guidance-${id}`);
@@ -329,6 +345,7 @@ const Story = () => {
       const pages = story.generatedPages.map((page, index) => ({
         pageNumber: index,
         imagePrompt: page.imagePrompt,
+        imagePromptSpec: page.imagePromptSpec,
       }));
 
       // Prepare guidance if enabled
@@ -367,6 +384,7 @@ const Story = () => {
         body: {
           storyId: id,
           pages,
+          artStyle: story.artStylePreset,
           size: imageSize,
           format: imageFormat,
           guidance,
@@ -393,16 +411,25 @@ const Story = () => {
 
       const successCount = data.results.filter((r: any) => r.imageUrl).length;
       const failCount = data.results.length - successCount;
+      const reusedCount = data.results.filter((r: any) => r.reused).length;
 
       if (failCount === 0) {
+        const message = reusedCount > 0 
+          ? `Generated ${successCount} images (${reusedCount} reused from library, saved $${(reusedCount * 0.40).toFixed(2)})`
+          : `Generated ${successCount} images`;
+        
         toast({
           title: "Success!",
-          description: `Generated ${successCount} images`,
+          description: message,
         });
       } else {
+        const message = reusedCount > 0 
+          ? `Generated ${successCount} images, ${failCount} failed (${reusedCount} reused from library)`
+          : `Generated ${successCount} images, ${failCount} failed`;
+        
         toast({
           title: "Partial Success",
-          description: `Generated ${successCount} images, ${failCount} failed`,
+          description: message,
           variant: "destructive",
         });
       }
@@ -723,6 +750,54 @@ const Story = () => {
               </div>
             )}
           </div>
+
+          {/* Cost Breakdown */}
+          {costStats && (costStats.imagesGenerated > 0 || costStats.imagesReused > 0) && (
+            <div className="mb-8 p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-xl border border-green-200 dark:border-green-800">
+              <h3 className="font-semibold text-lg mb-4 text-green-900 dark:text-green-100">
+                💰 Cost Breakdown
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                  <div className="text-2xl font-bold text-primary">
+                    {costStats.imagesGenerated}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Images Generated
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {costStats.imagesReused}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Images Reused
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    ${costStats.estimatedCost.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Estimated Cost
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-white/50 dark:bg-black/20 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    ${costStats.costSaved.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    You Saved
+                  </div>
+                </div>
+              </div>
+              {costStats.imagesReused > 0 && (
+                <p className="text-sm text-green-700 dark:text-green-300 mt-4 text-center">
+                  🎉 {Math.round((costStats.imagesReused / (costStats.imagesGenerated + costStats.imagesReused)) * 100)}% of images were reused from your library!
+                </p>
+              )}
+            </div>
+          )}
 
           {/* PDF Export Section */}
           <div className="mb-8 p-6 bg-card rounded-xl border border-border">

@@ -9,6 +9,15 @@ verify_jwt = false
 [functions.generate-all-images]
 verify_jwt = false
 
+[functions.search-image-library]
+verify_jwt = false
+
+[functions.add-to-library]
+verify_jwt = false
+
+[functions.backfill-image-library]
+verify_jwt = false
+
 [functions.kids-create]
 verify_jwt = false
 
