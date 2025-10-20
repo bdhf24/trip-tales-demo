@@ -447,15 +447,35 @@ const Story = () => {
         title: "Success",
         description: `Image for page ${pageIndex + 1} generated`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error retrying page ${pageIndex}:`, error);
+      
+      // Extract error message from the response
+      let errorMessage = "Failed to generate image";
+      let toastTitle = "Error";
+      let toastDescription = `Failed to generate image for page ${pageIndex + 1}`;
+      
+      // Check if this is a credit/rate limit error
+      if (error?.message?.includes("credits depleted") || error?.message?.includes("AI credits")) {
+        errorMessage = "AI credits depleted";
+        toastTitle = "Credits Depleted";
+        toastDescription = "You've run out of AI credits. Please add credits to your workspace in Settings → Workspace → Usage.";
+      } else if (error?.message?.includes("Rate limit")) {
+        errorMessage = "Rate limit exceeded";
+        toastTitle = "Rate Limited";
+        toastDescription = "You're sending too many requests. Please wait a moment and try again.";
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       updatePageStatus(pageIndex, {
         status: "failed",
-        error: error instanceof Error ? error.message : "Failed to generate",
+        error: errorMessage,
       });
+      
       toast({
-        title: "Error",
-        description: `Failed to generate image for page ${pageIndex + 1}`,
+        title: toastTitle,
+        description: toastDescription,
         variant: "destructive",
       });
     }
