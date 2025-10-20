@@ -15,6 +15,7 @@ interface GenerateAllRequest {
   pages: PageRequest[];
   size?: string;
   format?: string;
+  guidance?: any;
 }
 
 async function sleep(ms: number) {
@@ -27,8 +28,9 @@ async function generateImageWithRetry(
   imagePrompt: string,
   size: string,
   format: string,
-  maxRetries = 2
-): Promise<{ pageNumber: number; imageUrl?: string; error?: string }> {
+  maxRetries = 2,
+  guidance?: any
+): Promise<{ pageNumber: number; imageUrl?: string; error?: string; usedGuidance?: boolean }> {
   const delays = [1000, 3000]; // 1s, then 3s
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -52,6 +54,7 @@ async function generateImageWithRetry(
           pageNumber,
           size,
           format,
+          guidance,
         }),
       });
 
@@ -69,7 +72,7 @@ async function generateImageWithRetry(
 
       const data = await response.json();
       console.log(`Successfully generated image for page ${pageNumber}`);
-      return { pageNumber, imageUrl: data.imageUrl };
+      return { pageNumber, imageUrl: data.imageUrl, usedGuidance: data.usedGuidance };
 
     } catch (error) {
       console.error(`Error generating image for page ${pageNumber}, attempt ${attempt + 1}:`, error);
@@ -110,7 +113,7 @@ serve(async (req) => {
   }
 
   try {
-    const { storyId, pages, size = "1024x1024", format = "png" } = await req.json() as GenerateAllRequest;
+    const { storyId, pages, size = "1024x1024", format = "png", guidance } = await req.json() as GenerateAllRequest;
     
     if (!storyId || !pages || !Array.isArray(pages)) {
       return new Response(
@@ -130,7 +133,9 @@ serve(async (req) => {
         page.pageNumber,
         page.imagePrompt,
         size,
-        format
+        format,
+        2,
+        guidance
       );
       results.push(result);
     }

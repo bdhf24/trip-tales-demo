@@ -33,5 +33,8 @@ verify_jwt = false
 [functions.stories-list]
 verify_jwt = false
 
+[functions.prepare-kid-refs]
+verify_jwt = false
+
 [functions.stories-get]
 verify_jwt = false

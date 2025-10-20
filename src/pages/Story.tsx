@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Loader2, CheckCircle, XCircle, RotateCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, CheckCircle, XCircle, RotateCw, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type ArtStylePreset = "storybook-cozy" | "watercolor-soft" | "travel-sketch";
 
@@ -43,6 +51,21 @@ interface StoryData {
   generatedPages: GeneratedPage[];
 }
 
+interface GuidanceSettings {
+  enabled: boolean;
+  kidIds: string[];
+  strength: number;
+  downscale: number;
+}
+
+interface Kid {
+  id: string;
+  name: string;
+  age: number;
+  descriptor: string | null;
+  photoCount: number;
+}
+
 const Story = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -52,6 +75,14 @@ const Story = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [imageSize, setImageSize] = useState("1024x1024");
   const [imageFormat, setImageFormat] = useState("png");
+  const [guidanceSettings, setGuidanceSettings] = useState<GuidanceSettings>({
+    enabled: false,
+    kidIds: [],
+    strength: 0.45,
+    downscale: 768,
+  });
+  const [availableKids, setAvailableKids] = useState<Kid[]>([]);
+  const [isGuidanceOpen, setIsGuidanceOpen] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -89,6 +120,12 @@ const Story = () => {
         };
 
         setStory(loadedStory);
+
+        // Load saved guidance settings from localStorage
+        const savedSettings = localStorage.getItem(`guidance-${id}`);
+        if (savedSettings) {
+          setGuidanceSettings(JSON.parse(savedSettings));
+        }
       } catch (error) {
         console.error("Error loading story:", error);
         toast({ title: "Error", description: "Failed to load story", variant: "destructive" });
@@ -96,8 +133,26 @@ const Story = () => {
       }
     };
 
+    const loadKids = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('kids-list');
+        if (error) throw error;
+        setAvailableKids(data.kids);
+      } catch (error) {
+        console.error("Error loading kids:", error);
+      }
+    };
+
     loadStory();
+    loadKids();
   }, [id, navigate, toast]);
+
+  // Save guidance settings to localStorage whenever they change
+  useEffect(() => {
+    if (id) {
+      localStorage.setItem(`guidance-${id}`, JSON.stringify(guidanceSettings));
+    }
+  }, [guidanceSettings, id]);
 
   if (!story) {
     return (
@@ -153,12 +208,45 @@ const Story = () => {
         imagePrompt: page.imagePrompt,
       }));
 
+      // Prepare guidance if enabled
+      let guidance = null;
+      if (guidanceSettings.enabled && guidanceSettings.kidIds.length > 0) {
+        try {
+          const { data: kidRefsData, error: kidRefsError } = await supabase.functions.invoke("prepare-kid-refs", {
+            body: {
+              kidIds: guidanceSettings.kidIds,
+              refStrategy: 'auto-best',
+              maxRef: 3,
+              downscale: guidanceSettings.downscale,
+              sendOriginals: false,
+            },
+          });
+
+          if (kidRefsError) {
+            console.error("Error preparing kid refs:", kidRefsError);
+            toast({
+              title: "Warning",
+              description: "Could not load reference photos. Using descriptor-only generation.",
+            });
+          } else if (kidRefsData?.kidRefs && kidRefsData.kidRefs.length > 0) {
+            guidance = {
+              enabled: true,
+              kidRefs: kidRefsData.kidRefs,
+              strength: guidanceSettings.strength,
+            };
+          }
+        } catch (error) {
+          console.error("Error preparing guidance:", error);
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke("generate-all-images", {
         body: {
           storyId: id,
           pages,
           size: imageSize,
           format: imageFormat,
+          guidance,
         },
       });
 
@@ -344,6 +432,98 @@ const Story = () => {
                 </Button>
               </div>
             </div>
+
+            {/* Photo Guidance Panel */}
+            <Collapsible open={isGuidanceOpen} onOpenChange={setIsGuidanceOpen} className="mt-6">
+              <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
+                <Sparkles className="h-4 w-4" />
+                <span>Photo Likeness (Optional)</span>
+                <ChevronRight className={`h-4 w-4 transition-transform ${isGuidanceOpen ? 'rotate-90' : ''}`} />
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent className="mt-4 space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="guidance-enabled"
+                    checked={guidanceSettings.enabled}
+                    onCheckedChange={(checked) =>
+                      setGuidanceSettings({ ...guidanceSettings, enabled: checked as boolean })
+                    }
+                    disabled={isGenerating}
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="guidance-enabled" className="cursor-pointer font-medium">
+                      Use photo references for better likeness
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      We'll use low-res copies of selected photos to guide character appearance. Original photos stay private.
+                    </p>
+                  </div>
+                </div>
+
+                {guidanceSettings.enabled && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-sm">Select Kids</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {availableKids
+                          .filter(kid => kid.photoCount > 0)
+                          .map(kid => (
+                            <button
+                              key={kid.id}
+                              onClick={() => {
+                                const isSelected = guidanceSettings.kidIds.includes(kid.id);
+                                setGuidanceSettings({
+                                  ...guidanceSettings,
+                                  kidIds: isSelected
+                                    ? guidanceSettings.kidIds.filter(id => id !== kid.id)
+                                    : [...guidanceSettings.kidIds, kid.id],
+                                });
+                              }}
+                              disabled={isGenerating}
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                guidanceSettings.kidIds.includes(kid.id)
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-background border border-border hover:border-primary'
+                              }`}
+                            >
+                              {kid.name}
+                            </button>
+                          ))}
+                      </div>
+                      {availableKids.filter(kid => kid.photoCount > 0).length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          No kids with photos available. Upload photos in the Kids section first.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm">Likeness Strength</Label>
+                        <span className="text-xs text-muted-foreground">
+                          {Math.round(guidanceSettings.strength * 100)}%
+                        </span>
+                      </div>
+                      <Slider
+                        value={[guidanceSettings.strength * 100]}
+                        onValueChange={([value]) =>
+                          setGuidanceSettings({ ...guidanceSettings, strength: value / 100 })
+                        }
+                        min={20}
+                        max={90}
+                        step={5}
+                        disabled={isGenerating}
+                        className="w-full"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Lower values (20-40%) = subtle guidance. Higher values (60-90%) = strong resemblance but may affect artistic style.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Progress indicators */}
             {isGenerating && (

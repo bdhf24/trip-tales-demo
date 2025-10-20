@@ -49,7 +49,14 @@ serve(async (req) => {
   }
 
   try {
-    const { imagePrompt, storyId, pageNumber, size = "1024x1024", format = "png" } = await req.json();
+    const { 
+      imagePrompt, 
+      storyId, 
+      pageNumber, 
+      size = "1024x1024", 
+      format = "png",
+      guidance 
+    } = await req.json();
     
     if (!imagePrompt || !storyId || pageNumber === undefined) {
       return new Response(
@@ -73,6 +80,39 @@ serve(async (req) => {
     const sanitized = sanitizePrompt(imagePrompt);
     console.log(`Generating image for story ${storyId}, page ${pageNumber}`);
     console.log(`Sanitized prompt: ${sanitized}`);
+    console.log(`Guidance enabled: ${guidance?.enabled || false}`);
+
+    // Prepare message content
+    let messageContent: any = sanitized;
+    let usedGuidance = false;
+
+    // If guidance is enabled and we have reference images
+    if (guidance?.enabled && guidance?.kidRefs && guidance.kidRefs.length > 0) {
+      console.log(`Using photo guidance with ${guidance.kidRefs.length} reference images`);
+      
+      // Build a multi-part message with text + reference images
+      const contentParts: any[] = [
+        {
+          type: "text",
+          text: `Create an illustration based on this description: ${sanitized}\n\nUse the provided reference images to ensure character likeness (strength: ${guidance.strength || 0.45}). Match the hair, facial features, skin tone, and general appearance from the references.`
+        }
+      ];
+
+      // Add reference images
+      for (const kidRef of guidance.kidRefs) {
+        for (const ref of kidRef.refs) {
+          contentParts.push({
+            type: "image_url",
+            image_url: {
+              url: ref.url
+            }
+          });
+        }
+      }
+
+      messageContent = contentParts;
+      usedGuidance = true;
+    }
 
     // Generate image using Lovable AI (Nano banana)
     const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -86,7 +126,7 @@ serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: sanitized,
+            content: messageContent,
           },
         ],
         modalities: ["image", "text"],
@@ -160,7 +200,7 @@ serve(async (req) => {
     console.log(`Successfully generated and uploaded image: ${publicUrl}`);
 
     return new Response(
-      JSON.stringify({ imageUrl: publicUrl }),
+      JSON.stringify({ imageUrl: publicUrl, usedGuidance }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
