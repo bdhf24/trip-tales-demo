@@ -103,6 +103,19 @@ const Kids = () => {
     if (!selectedKid || !e.target.files?.[0]) return;
 
     const file = e.target.files[0];
+    
+    // Validate file type
+    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+      toast.error('Only JPG and PNG files are allowed');
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
     setIsUploading(true);
 
     try {
@@ -110,17 +123,29 @@ const Kids = () => {
       formData.append('kidId', selectedKid.id);
       formData.append('file', file);
 
-      const { data, error } = await supabase.functions.invoke('kids-upload-photo', {
-        body: formData
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kids-upload-photo`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: formData
+        }
+      );
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
       
       toast.success('Photo uploaded!');
       openKidDetails(selectedKid);
+      // Clear the file input
+      e.target.value = '';
     } catch (error) {
       console.error('Error uploading photo:', error);
-      toast.error('Failed to upload photo');
+      toast.error(error instanceof Error ? error.message : 'Failed to upload photo');
     } finally {
       setIsUploading(false);
     }

@@ -17,8 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const url = new URL(req.url);
-    const kidId = url.searchParams.get('kidId');
+    const { kidId } = await req.json();
 
     if (!kidId) {
       return new Response(
