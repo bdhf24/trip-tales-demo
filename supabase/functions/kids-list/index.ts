@@ -1,0 +1,50 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    const { data: kids, error } = await supabase
+      .from('kids')
+      .select(`
+        *,
+        kid_photos(count)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const kidsWithCounts = kids.map(kid => ({
+      id: kid.id,
+      name: kid.name,
+      age: kid.age,
+      descriptor: kid.descriptor,
+      photoCount: kid.kid_photos[0]?.count || 0,
+      createdAt: kid.created_at
+    }));
+
+    return new Response(
+      JSON.stringify({ kids: kidsWithCounts }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error in kids-list function:', error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

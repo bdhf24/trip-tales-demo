@@ -8,3 +8,30 @@ verify_jwt = false
 
 [functions.generate-all-images]
 verify_jwt = false
+
+[functions.kids-create]
+verify_jwt = false
+
+[functions.kids-delete]
+verify_jwt = false
+
+[functions.kids-extract-descriptor]
+verify_jwt = false
+
+[functions.kids-get]
+verify_jwt = false
+
+[functions.kids-list]
+verify_jwt = false
+
+[functions.kids-update]
+verify_jwt = false
+
+[functions.kids-upload-photo]
+verify_jwt = false
+
+[functions.stories-list]
+verify_jwt = false
+
+[functions.stories-get]
+verify_jwt = false

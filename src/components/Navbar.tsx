@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plane } from "lucide-react";
+import { Plane, Library, Users } from "lucide-react";
 
 const Navbar = () => {
   return (
@@ -16,11 +16,25 @@ const Navbar = () => {
             </span>
           </Link>
           
-          <Link to="/new">
-            <Button size="lg" className="rounded-full font-semibold shadow-lg">
-              Create a Story
-            </Button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/library">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <Library className="h-4 w-4" />
+                Library
+              </Button>
+            </Link>
+            <Link to="/kids">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <Users className="h-4 w-4" />
+                Kids
+              </Button>
+            </Link>
+            <Link to="/new">
+              <Button size="lg" className="rounded-full font-semibold shadow-lg">
+                Create a Story
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </nav>

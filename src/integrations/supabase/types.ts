@@ -14,7 +14,200 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      kid_photos: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          kid_id: string
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          kid_id: string
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          kid_id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kid_photos_kid_id_fkey"
+            columns: ["kid_id"]
+            isOneToOne: false
+            referencedRelation: "kids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kids: {
+        Row: {
+          age: number
+          created_at: string
+          descriptor: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age: number
+          created_at?: string
+          descriptor?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age?: number
+          created_at?: string
+          descriptor?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pages: {
+        Row: {
+          created_at: string
+          heading: string
+          id: string
+          image_prompt: string
+          image_prompt_spec: Json
+          image_url: string | null
+          page_number: number
+          story_id: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          heading: string
+          id?: string
+          image_prompt: string
+          image_prompt_spec: Json
+          image_url?: string | null
+          page_number: number
+          story_id: string
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          heading?: string
+          id?: string
+          image_prompt?: string
+          image_prompt_spec?: Json
+          image_url?: string | null
+          page_number?: number
+          story_id?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pages_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stories: {
+        Row: {
+          art_style: string
+          created_at: string
+          destination: string
+          id: string
+          interests: string[]
+          kids_json: Json
+          length: number
+          month: string
+          outline_json: Json
+          title: string
+          tone: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          art_style: string
+          created_at?: string
+          destination: string
+          id?: string
+          interests?: string[]
+          kids_json: Json
+          length: number
+          month: string
+          outline_json: Json
+          title: string
+          tone: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          art_style?: string
+          created_at?: string
+          destination?: string
+          id?: string
+          interests?: string[]
+          kids_json?: Json
+          length?: number
+          month?: string
+          outline_json?: Json
+          title?: string
+          tone?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

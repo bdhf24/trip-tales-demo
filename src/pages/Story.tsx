@@ -59,21 +59,45 @@ const Story = () => {
       return;
     }
 
-    // Try to load story from localStorage
-    const storyData = localStorage.getItem(`story-${id}`);
-    if (!storyData) {
-      navigate("/");
-      return;
-    }
+    const loadStory = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('stories-get', {
+          body: { storyId: id }
+        });
 
-    try {
-      const parsedStory = JSON.parse(storyData) as StoryData;
-      setStory(parsedStory);
-    } catch (error) {
-      console.error("Error parsing story:", error);
-      navigate("/");
-    }
-  }, [id, navigate]);
+        if (error) throw error;
+
+        const loadedStory: StoryData = {
+          storyId: data.story.id,
+          destination: data.story.destination,
+          month: data.story.month,
+          tone: data.story.tone,
+          kids: data.story.kids_json,
+          interests: data.story.interests,
+          pages: data.pages.length,
+          artStylePreset: data.story.art_style,
+          generatedPages: data.pages.map((p: any) => ({
+            heading: p.heading,
+            text: p.text,
+            scene: p.image_prompt_spec?.scene || '',
+            landmarkDetail: p.image_prompt_spec?.landmarkDetail,
+            imagePrompt: p.image_prompt,
+            imagePromptSpec: p.image_prompt_spec,
+            imageUrl: p.image_url,
+            status: p.image_url ? 'done' : 'idle'
+          }))
+        };
+
+        setStory(loadedStory);
+      } catch (error) {
+        console.error("Error loading story:", error);
+        toast({ title: "Error", description: "Failed to load story", variant: "destructive" });
+        navigate("/library");
+      }
+    };
+
+    loadStory();
+  }, [id, navigate, toast]);
 
   if (!story) {
     return (

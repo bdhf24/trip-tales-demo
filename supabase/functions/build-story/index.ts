@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type ArtStylePreset = "storybook-cozy" | "watercolor-soft" | "travel-sketch";
 type CharacterSheet = {
@@ -72,6 +73,11 @@ serve(async (req) => {
   }
 
   try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
     const { 
       destination, 
       month, 
@@ -87,8 +93,6 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
-
-    const storyId = crypto.randomUUID();
     const kidsString = kids.join(", ");
     const interestsString = interests.join(", ");
 
@@ -280,6 +284,50 @@ Return JSON with this structure:
         imagePrompt,
         imagePromptSpec,
       });
+    }
+
+    // Create story in database
+    const storyTitle = outline.map((p: any) => p.heading).join(' - ').slice(0, 100);
+    const { data: storyRecord, error: storyError } = await supabase
+      .from('stories')
+      .insert({
+        title: storyTitle,
+        destination,
+        month,
+        length: generatedPages.length,
+        tone,
+        interests: typeof interests === 'string' ? interests.split(',').map(i => i.trim()) : interests,
+        kids_json: kids,
+        art_style: artStylePreset,
+        outline_json: outline
+      })
+      .select()
+      .single();
+
+    if (storyError) {
+      console.error('Error creating story:', storyError);
+      throw new Error('Failed to save story to database');
+    }
+
+    const storyId = storyRecord.id;
+
+    // Save pages to database
+    for (let i = 0; i < generatedPages.length; i++) {
+      const page = generatedPages[i];
+      const { error: pageError } = await supabase
+        .from('pages')
+        .insert({
+          story_id: storyId,
+          page_number: i + 1,
+          heading: page.heading,
+          text: page.text,
+          image_prompt: page.imagePrompt,
+          image_prompt_spec: page.imagePromptSpec
+        });
+
+      if (pageError) {
+        console.error(`Error saving page ${i + 1}:`, pageError);
+      }
     }
 
     const response = {

@@ -146,6 +146,17 @@ serve(async (req) => {
       .from("story-images")
       .getPublicUrl(fileName);
 
+    // Update page with image URL
+    const { error: updateError } = await supabase
+      .from('pages')
+      .update({ image_url: publicUrl })
+      .eq('story_id', storyId)
+      .eq('page_number', pageNumber);
+
+    if (updateError) {
+      console.error('Error updating page with image URL:', updateError);
+    }
+
     console.log(`Successfully generated and uploaded image: ${publicUrl}`);
 
     return new Response(
