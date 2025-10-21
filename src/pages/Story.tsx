@@ -691,8 +691,8 @@ const Story = () => {
                       min={0}
                       max={1}
                       step={0.05}
-                      value={guidanceSettings.strength}
-                      onValueChange={(value) => setGuidanceSettings(prev => ({ ...prev, strength: value }))}
+                      value={[guidanceSettings.strength]}
+                      onValueChange={(value) => setGuidanceSettings(prev => ({ ...prev, strength: value[0] }))}
                     />
                   </div>
                   <div>
@@ -759,16 +759,11 @@ const Story = () => {
                   )}
                 </Button>
                 {pdfUrl && (
-                  <Button
-                    as="a"
-                    href={pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="outline"
-                    size="lg"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download PDF ({pdfFileSize ? `${(pdfFileSize / 1024).toFixed(1)} KB` : "?"})
+                  <Button asChild variant="outline" size="lg">
+                    <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                      <Download className="mr-2 h-4 w-4" />
+                      Download PDF ({pdfFileSize ? `${(pdfFileSize / 1024).toFixed(1)} KB` : "?"})
+                    </a>
                   </Button>
                 )}
               </div>
