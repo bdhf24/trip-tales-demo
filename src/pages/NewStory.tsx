@@ -8,6 +8,13 @@ import Navbar from "@/components/Navbar";
 import { Sparkles, Loader2, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const INTERESTS = [
   "beaches", "castles", "soccer", "animals", "boats",
@@ -26,12 +33,20 @@ const ART_STYLES = [
   { value: "travel-sketch", label: "Travel Sketch" },
 ];
 
+interface Kid {
+  id: string;
+  name: string;
+  age: number;
+  interests?: string[];
+}
+
 const NewStory = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [destination, setDestination] = useState("");
   const [month, setMonth] = useState("");
-  const [kidNames, setKidNames] = useState("");
+  const [availableKids, setAvailableKids] = useState<Kid[]>([]);
+  const [selectedKidIds, setSelectedKidIds] = useState<string[]>([]);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [pageCount, setPageCount] = useState(6);
   const [tone, setTone] = useState<"curious" | "adventurous" | "silly">("curious");
@@ -40,21 +55,48 @@ const NewStory = () => {
   const [customInterest, setCustomInterest] = useState("");
   const [kidInterests, setKidInterests] = useState<string[]>([]);
 
-  // Auto-populate interests when kid names change
+  // Fetch available kids on mount
+  useEffect(() => {
+    const fetchKids = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('kids-list');
+        
+        if (error) throw error;
+        
+        if (data?.kids) {
+          setAvailableKids(data.kids.map((kid: any) => ({
+            id: kid.id,
+            name: kid.name,
+            age: kid.age,
+            interests: []
+          })));
+        }
+      } catch (error) {
+        console.error("Error fetching kids:", error);
+        toast({
+          title: "Failed to load profiles",
+          description: "Could not load saved kid profiles",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchKids();
+  }, [toast]);
+
+  // Auto-populate interests when selected kids change
   useEffect(() => {
     const fetchKidInterests = async () => {
-      if (!kidNames.trim()) {
+      if (selectedKidIds.length === 0) {
         setKidInterests([]);
         return;
       }
-
-      const names = kidNames.split(",").map(name => name.trim()).filter(Boolean);
       
       try {
         const { data, error } = await supabase
           .from('kids')
           .select('interests, name')
-          .in('name', names);
+          .in('id', selectedKidIds);
 
         if (error) throw error;
 
@@ -76,10 +118,16 @@ const NewStory = () => {
       }
     };
 
-    // Debounce the fetch
-    const timeoutId = setTimeout(fetchKidInterests, 500);
-    return () => clearTimeout(timeoutId);
-  }, [kidNames]);
+    fetchKidInterests();
+  }, [selectedKidIds]);
+
+  const toggleKidSelection = (kidId: string) => {
+    setSelectedKidIds(prev =>
+      prev.includes(kidId)
+        ? prev.filter(id => id !== kidId)
+        : [...prev, kidId]
+    );
+  };
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests(prev =>
@@ -114,7 +162,8 @@ const NewStory = () => {
     setIsGenerating(true);
 
     try {
-      const kids = kidNames.split(",").map(name => name.trim()).filter(Boolean);
+      const selectedKids = availableKids.filter(k => selectedKidIds.includes(k.id));
+      const kids = selectedKids.map(k => k.name);
       
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/build-story`,
@@ -227,23 +276,63 @@ const NewStory = () => {
                 />
               </div>
 
-              {/* Kid Names Field */}
+              {/* Kid Selection Field */}
               <div className="space-y-3">
-                <Label htmlFor="kidNames" className="text-lg font-semibold">
+                <Label className="text-lg font-semibold">
                   Who went on the adventure? 👦👧
                 </Label>
-                <Input
-                  id="kidNames"
-                  type="text"
-                  placeholder="e.g., Emma, Lucas"
-                  value={kidNames}
-                  onChange={(e) => setKidNames(e.target.value)}
-                  required
-                  className="text-lg h-14 rounded-2xl border-2 focus:border-primary"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Separate multiple names with commas
-                </p>
+                
+                {availableKids.length === 0 ? (
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <p className="text-muted-foreground mb-2">No saved profiles found</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate('/kids')}
+                    >
+                      Create Kid Profile
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Selected Kids Display */}
+                    {selectedKidIds.length > 0 && (
+                      <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg">
+                        {selectedKidIds.map((kidId) => {
+                          const kid = availableKids.find(k => k.id === kidId);
+                          return kid ? (
+                            <Badge
+                              key={kidId}
+                              variant="default"
+                              className="text-base py-2 px-4 rounded-full cursor-pointer"
+                              onClick={() => toggleKidSelection(kidId)}
+                            >
+                              {kid.name}
+                              <X className="ml-1 h-3 w-3" />
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                    
+                    {/* Kid Selection Badges */}
+                    <div className="flex flex-wrap gap-2">
+                      {availableKids.map((kid) => (
+                        <Badge
+                          key={kid.id}
+                          variant={selectedKidIds.includes(kid.id) ? "default" : "outline"}
+                          className="cursor-pointer text-base py-2 px-4 rounded-full"
+                          onClick={() => toggleKidSelection(kid.id)}
+                        >
+                          {kid.name} ({kid.age}y)
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Click to select one or more kids
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Interests Field */}
@@ -372,7 +461,7 @@ const NewStory = () => {
               <Button
                 type="submit"
                 size="lg"
-                disabled={isGenerating}
+                disabled={isGenerating || selectedKidIds.length === 0}
                 className="w-full rounded-2xl text-lg font-semibold py-7 shadow-xl hover:shadow-2xl transition-all hover:scale-105"
               >
                 {isGenerating ? (
