@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const INTERESTS = [
   "beaches", "castles", "soccer", "animals", "boats",
@@ -36,6 +37,49 @@ const NewStory = () => {
   const [tone, setTone] = useState<"curious" | "adventurous" | "silly">("curious");
   const [artStyle, setArtStyle] = useState<"storybook-cozy" | "watercolor-soft" | "travel-sketch">("storybook-cozy");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [customInterest, setCustomInterest] = useState("");
+  const [kidInterests, setKidInterests] = useState<string[]>([]);
+
+  // Auto-populate interests when kid names change
+  useEffect(() => {
+    const fetchKidInterests = async () => {
+      if (!kidNames.trim()) {
+        setKidInterests([]);
+        return;
+      }
+
+      const names = kidNames.split(",").map(name => name.trim()).filter(Boolean);
+      
+      try {
+        const { data, error } = await supabase
+          .from('kids')
+          .select('interests, name')
+          .in('name', names);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const allInterests = data.flatMap(k => k.interests || []);
+          const uniqueInterests = [...new Set(allInterests)];
+          setKidInterests(uniqueInterests);
+
+          // Auto-select kid interests
+          setSelectedInterests(prev => {
+            const combined = [...new Set([...prev, ...uniqueInterests])];
+            return combined;
+          });
+        } else {
+          setKidInterests([]);
+        }
+      } catch (error) {
+        console.error("Error fetching kid interests:", error);
+      }
+    };
+
+    // Debounce the fetch
+    const timeoutId = setTimeout(fetchKidInterests, 500);
+    return () => clearTimeout(timeoutId);
+  }, [kidNames]);
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests(prev =>
@@ -43,6 +87,17 @@ const NewStory = () => {
         ? prev.filter(i => i !== interest)
         : [...prev, interest]
     );
+  };
+
+  const addCustomInterest = () => {
+    if (customInterest.trim() && !selectedInterests.includes(customInterest.trim())) {
+      setSelectedInterests(prev => [...prev, customInterest.trim()]);
+      setCustomInterest("");
+    }
+  };
+
+  const removeInterest = (interest: string) => {
+    setSelectedInterests(prev => prev.filter(i => i !== interest));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -196,6 +251,31 @@ const NewStory = () => {
                 <Label className="text-lg font-semibold">
                   What are they interested in? 🎨
                 </Label>
+
+                {kidInterests.length > 0 && (
+                  <p className="text-sm text-blue-600 dark:text-blue-400">
+                    ✨ Auto-populated from kid profiles: {kidInterests.join(", ")}
+                  </p>
+                )}
+
+                {/* Selected Interests */}
+                {selectedInterests.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg">
+                    {selectedInterests.map((interest) => (
+                      <Badge
+                        key={interest}
+                        variant="default"
+                        className="text-base py-2 px-4 rounded-full cursor-pointer"
+                        onClick={() => removeInterest(interest)}
+                      >
+                        {interest}
+                        <X className="ml-1 h-3 w-3" />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {/* Predefined Interests */}
                 <div className="flex flex-wrap gap-2">
                   {INTERESTS.map((interest) => (
                     <Badge
@@ -208,8 +288,29 @@ const NewStory = () => {
                     </Badge>
                   ))}
                 </div>
+
+                {/* Custom Interest Input */}
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Add custom interest..."
+                    value={customInterest}
+                    onChange={(e) => setCustomInterest(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomInterest())}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={addCustomInterest}
+                    variant="outline"
+                    size="icon"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
                 <p className="text-sm text-muted-foreground">
-                  Select at least one interest
+                  Select at least one interest or add your own
                 </p>
               </div>
 

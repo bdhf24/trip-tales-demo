@@ -51,9 +51,14 @@ const Library = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Story Library</h1>
-          <p className="text-muted-foreground">Browse all your created stories</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Story Library</h1>
+            <p className="text-muted-foreground">Browse all your created stories</p>
+          </div>
+          <Button asChild variant="outline">
+            <Link to="/library/manage">Manage Library</Link>
+          </Button>
         </div>
 
         {stories.length === 0 ? (

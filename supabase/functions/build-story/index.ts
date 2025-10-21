@@ -88,13 +88,33 @@ serve(async (req) => {
       artStylePreset = "storybook-cozy" as ArtStylePreset
     } = await req.json();
     
+    // Query kid interests from database if kids have profiles
+    let kidInterests: string[] = [];
+    if (kids && kids.length > 0) {
+      try {
+        const { data: kidsData } = await supabase
+          .from('kids')
+          .select('interests')
+          .in('name', kids);
+        
+        if (kidsData) {
+          kidInterests = kidsData.flatMap(k => k.interests || []);
+        }
+      } catch (error) {
+        console.error('Error fetching kid interests:', error);
+      }
+    }
+    
+    // Combine story interests with kid interests
+    const allInterests = [...new Set([...interests, ...kidInterests])];
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
     const kidsString = kids.join(", ");
-    const interestsString = interests.join(", ");
+    const interestsString = allInterests.join(", ");
 
     // Step A: Generate outline
     const outlineResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -279,6 +299,78 @@ Return JSON with this structure:
       const pageData = await pageResponse.json();
       const pageArgs = JSON.parse(pageData.choices[0].message.tool_calls[0].function.arguments);
       
+      // Generate interactive elements for this page
+      let interactiveElements = { questions: [], activities: [] };
+      try {
+        const interactiveResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              {
+                role: "system",
+                content: "You are a children's book educator. Generate engaging questions and activities for young children based on story content.",
+              },
+              {
+                role: "user",
+                content: `Generate 2-3 age-appropriate questions and 1-2 simple activities for this story page:
+
+Heading: ${pageArgs.heading}
+Text: ${pageArgs.text}
+
+The questions should be open-ended and encourage discussion. Activities should be simple and fun.`,
+              },
+            ],
+            tools: [{
+              type: "function",
+              function: {
+                name: "generate_interactive_elements",
+                description: "Generate questions and activities for a story page",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    questions: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "2-3 open-ended questions for children",
+                    },
+                    activities: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          title: { type: "string" },
+                          description: { type: "string" },
+                          materials: { type: "string" },
+                        },
+                        required: ["title", "description"],
+                      },
+                      description: "1-2 simple activities children can do",
+                    },
+                  },
+                  required: ["questions", "activities"],
+                },
+              },
+            }],
+            tool_choice: { type: "function", function: { name: "generate_interactive_elements" } },
+          }),
+        });
+
+        if (interactiveResponse.ok) {
+          const interactiveData = await interactiveResponse.json();
+          const toolCall = interactiveData.choices?.[0]?.message?.tool_calls?.[0];
+          if (toolCall) {
+            interactiveElements = JSON.parse(toolCall.function.arguments);
+          }
+        }
+      } catch (error) {
+        console.error(`Error generating interactive elements for page ${outlineItem.page}:`, error);
+      }
+      
       // Build structured image prompt spec
       const imagePromptSpec: ImagePromptSpec = {
         stylePreset: artStylePreset,
@@ -301,6 +393,8 @@ Return JSON with this structure:
         ...pageArgs,
         imagePrompt,
         imagePromptSpec,
+        questions: interactiveElements.questions,
+        activities: interactiveElements.activities,
       });
     }
 
@@ -369,7 +463,9 @@ Return JSON with this structure:
           heading: page.heading,
           text: page.text,
           image_prompt: page.imagePrompt,
-          image_prompt_spec: page.imagePromptSpec
+          image_prompt_spec: page.imagePromptSpec,
+          questions_for_child: page.questions || [],
+          activities: page.activities || [],
         });
 
       if (pageError) {
