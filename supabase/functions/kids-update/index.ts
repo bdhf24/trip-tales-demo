@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const { kidId, name, age, descriptor } = await req.json();
+    const { kidId, name, age, descriptor, interests } = await req.json();
 
     if (!kidId) {
       return new Response(
@@ -30,6 +30,7 @@ serve(async (req) => {
     if (name !== undefined) updates.name = name;
     if (age !== undefined) updates.age = age;
     if (descriptor !== undefined) updates.descriptor = descriptor;
+    if (interests !== undefined) updates.interests = interests;
 
     const { data: kid, error } = await supabase
       .from('kids')

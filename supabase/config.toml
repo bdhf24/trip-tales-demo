@@ -18,6 +18,15 @@ verify_jwt = false
 [functions.backfill-image-library]
 verify_jwt = false
 
+[functions.backfill-approval-check]
+verify_jwt = false
+
+[functions.upgrade-to-high-res]
+verify_jwt = false
+
+[functions.add-interactive-elements]
+verify_jwt = false
+
 [functions.kids-create]
 verify_jwt = false
 
@@ -55,4 +64,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.stories-get]
+verify_jwt = false
+
+[functions.export-story-pdf]
 verify_jwt = false

@@ -17,7 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const { name, age, userId } = await req.json();
+    const { name, age, userId, interests } = await req.json();
 
     if (!name || !age) {
       return new Response(
@@ -45,7 +45,8 @@ serve(async (req) => {
         name, 
         age, 
         user_id: finalUserId,
-        descriptor: null 
+        descriptor: null,
+        interests: interests || []
       })
       .select()
       .single();

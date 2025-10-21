@@ -8,6 +8,7 @@ import NewStory from "./pages/NewStory";
 import StoryDemo from "./pages/StoryDemo";
 import Story from "./pages/Story";
 import Library from "./pages/Library";
+import LibraryManager from "./pages/LibraryManager";
 import Kids from "./pages/Kids";
 import NotFound from "./pages/NotFound";
 
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/" element={<Landing />} />
           <Route path="/new" element={<NewStory />} />
           <Route path="/library" element={<Library />} />
+          <Route path="/library/manage" element={<LibraryManager />} />
           <Route path="/kids" element={<Kids />} />
           <Route path="/story/demo" element={<StoryDemo />} />
           <Route path="/story/:id" element={<Story />} />

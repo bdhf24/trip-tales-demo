@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Plus, Upload, Trash2, RefreshCw, User } from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '@/components/Navbar';
@@ -16,6 +17,7 @@ interface Kid {
   age: number;
   descriptor: string | null;
   appearance_notes: string | null;
+  interests: string[];
   photoCount: number;
   createdAt: string;
 }
@@ -53,6 +55,8 @@ const Kids = () => {
   const [newKidAge, setNewKidAge] = useState('');
   const [editingDescriptor, setEditingDescriptor] = useState('');
   const [editingAppearanceNotes, setEditingAppearanceNotes] = useState('');
+  const [editingInterests, setEditingInterests] = useState<string[]>([]);
+  const [customInterest, setCustomInterest] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -105,6 +109,7 @@ const Kids = () => {
     setSelectedKid(kid);
     setEditingDescriptor(kid.descriptor || '');
     setEditingAppearanceNotes(kid.appearance_notes || '');
+    setEditingInterests(kid.interests || []);
     
     try {
       const [photosResponse, referencesResponse] = await Promise.all([
@@ -133,13 +138,11 @@ const Kids = () => {
 
     const file = e.target.files[0];
     
-    // Validate file type
     if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
       toast.error('Only JPG and PNG files are allowed');
       return;
     }
 
-    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File size must be less than 5MB');
       return;
@@ -170,7 +173,6 @@ const Kids = () => {
       
       toast.success('Photo uploaded!');
       openKidDetails(selectedKid);
-      // Clear the file input
       e.target.value = '';
     } catch (error) {
       console.error('Error uploading photo:', error);
@@ -210,7 +212,8 @@ const Kids = () => {
         body: { 
           kidId: selectedKid.id, 
           descriptor: editingDescriptor,
-          appearance_notes: editingAppearanceNotes 
+          appearance_notes: editingAppearanceNotes,
+          interests: editingInterests
         }
       });
 
@@ -222,6 +225,28 @@ const Kids = () => {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
     }
+  };
+
+  const toggleInterest = (interest: string) => {
+    setEditingInterests(prev =>
+      prev.includes(interest)
+        ? prev.filter(i => i !== interest)
+        : [...prev, interest]
+    );
+  };
+
+  const addCustomInterest = () => {
+    if (!customInterest.trim()) return;
+    if (editingInterests.includes(customInterest.trim())) {
+      toast.error('Interest already added');
+      return;
+    }
+    setEditingInterests(prev => [...prev, customInterest.trim()]);
+    setCustomInterest('');
+  };
+
+  const removeInterest = (interest: string) => {
+    setEditingInterests(prev => prev.filter(i => i !== interest));
   };
 
   const deleteReference = async (refId: string) => {
@@ -267,10 +292,7 @@ const Kids = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-foreground mb-2">Kids Profiles</h1>
-            <p className="text-muted-foreground">Upload photos to create character descriptors for stories</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Photos are stored privately for descriptor extraction. Generated images use text descriptors only.
-            </p>
+            <p className="text-muted-foreground">Upload photos and add interests to create character descriptors for stories</p>
           </div>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
@@ -332,6 +354,16 @@ const Kids = () => {
                     {kid.photoCount} {kid.photoCount === 1 ? 'photo' : 'photos'}
                   </span>
                 </div>
+                {kid.interests && kid.interests.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {kid.interests.slice(0, 3).map(interest => (
+                      <Badge key={interest} variant="secondary" className="text-xs">{interest}</Badge>
+                    ))}
+                    {kid.interests.length > 3 && (
+                      <Badge variant="secondary" className="text-xs">+{kid.interests.length - 3}</Badge>
+                    )}
+                  </div>
+                )}
                 {kid.descriptor ? (
                   <p className="text-sm text-muted-foreground line-clamp-3">{kid.descriptor}</p>
                 ) : (
@@ -380,94 +412,70 @@ const Kids = () => {
                     </div>
                   </div>
 
-                  {/* Reference Gallery */}
+                  {/* References */}
                   {references.length > 0 && (
                     <div>
                       <h3 className="font-semibold mb-3">Character References ({references.length})</h3>
                       <div className="grid grid-cols-2 gap-3">
                         {references.map((ref) => (
                           <div key={ref.id} className="relative group">
-                            <img
-                              src={ref.pages.image_url}
-                              alt={`Reference from ${ref.pages.stories.title}`}
-                              className="w-full h-40 object-cover rounded"
-                            />
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex flex-col items-center justify-center p-2 text-white text-xs">
-                              <p className="font-semibold">{ref.pages.stories.title}</p>
-                              <p>Page {ref.pages.page_number}</p>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="mt-2"
-                                onClick={() => deleteReference(ref.id)}
-                              >
-                                <Trash2 className="w-3 h-3 mr-1" />
-                                Remove
-                              </Button>
-                            </div>
+                            <img src={ref.pages.image_url} alt="Reference" className="w-full h-40 object-cover rounded" />
+                            <Button
+                              size="icon"
+                              variant="destructive"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => deleteReference(ref.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                            <p className="text-xs text-muted-foreground mt-1">{ref.pages.stories.title} - Page {ref.pages.page_number}</p>
                           </div>
                         ))}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        These story pages are used as additional references for consistent character appearance
-                      </p>
                     </div>
                   )}
 
                   {/* Descriptor Section */}
                   <div>
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="font-semibold">Character Descriptor</h3>
-                      <Button
-                        size="sm"
-                        disabled={isExtracting || photos.length === 0}
-                        onClick={extractDescriptor}
-                      >
-                        <RefreshCw className={`w-4 h-4 mr-2 ${isExtracting ? 'animate-spin' : ''}`} />
+                    <Label htmlFor="descriptor">Character Descriptor</Label>
+                    <Textarea id="descriptor" value={editingDescriptor} onChange={(e) => setEditingDescriptor(e.target.value)} placeholder="Physical appearance description..." className="h-24" />
+                    <div className="flex gap-2 mt-2">
+                      <Button size="sm" variant="outline" onClick={extractDescriptor} disabled={isExtracting || photos.length === 0}>
+                        <RefreshCw className="w-4 h-4 mr-2" />
                         {isExtracting ? 'Extracting...' : 'Extract from Photos'}
                       </Button>
+                      <Button size="sm" onClick={updateDescriptor}>Save</Button>
                     </div>
-                    <Textarea
-                      value={editingDescriptor}
-                      onChange={(e) => setEditingDescriptor(e.target.value)}
-                      placeholder="Upload photos and extract descriptor, or type manually"
-                      rows={4}
-                      className="mb-2"
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      This descriptor will be used in story image prompts for better character consistency
-                    </p>
                   </div>
 
-                  {/* Appearance Notes Section */}
+                  {/* Interests Section */}
                   <div>
-                    <h3 className="font-semibold mb-3">Appearance Notes (Optional)</h3>
-                    <Textarea
-                      value={editingAppearanceNotes}
-                      onChange={(e) => setEditingAppearanceNotes(e.target.value)}
-                      placeholder="e.g., 'Leo should have shorter hair', 'Sasha's eyes should be bigger', 'warmer skin tone'"
-                      rows={3}
-                      className="mb-2"
-                    />
-                    <Button size="sm" onClick={updateDescriptor}>
-                      Save Changes
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Add specific feedback about how the character should look. These notes will enhance future image generation.
-                    </p>
+                    <Label>Interests</Label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {["animals", "sports", "art", "music", "science", "space", "nature", "cooking", "building", "reading"].map(interest => (
+                        <Badge key={interest} variant={editingInterests.includes(interest) ? "default" : "outline"} className="cursor-pointer" onClick={() => toggleInterest(interest)}>{interest}</Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input placeholder="Add custom interest..." value={customInterest} onChange={(e) => setCustomInterest(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addCustomInterest()} />
+                      <Button size="sm" onClick={addCustomInterest}>Add</Button>
+                    </div>
+                    {editingInterests.filter(i => !["animals", "sports", "art", "music", "science", "space", "nature", "cooking", "building", "reading"].includes(i)).length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {editingInterests.filter(i => !["animals", "sports", "art", "music", "science", "space", "nature", "cooking", "building", "reading"].includes(i)).map(interest => (
+                          <Badge key={interest} variant="secondary" className="cursor-pointer" onClick={() => removeInterest(interest)}>{interest} ×</Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Delete Section */}
-                  <div className="pt-4 border-t">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => deleteKid(selectedKid.id, selectedKid.name)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Profile
-                    </Button>
+                  {/* Appearance Notes */}
+                  <div>
+                    <Label htmlFor="appearance">Appearance Notes</Label>
+                    <Textarea id="appearance" value={editingAppearanceNotes} onChange={(e) => setEditingAppearanceNotes(e.target.value)} placeholder="Additional details..." className="h-20" />
                   </div>
+
+                  <Button variant="destructive" onClick={() => deleteKid(selectedKid.id, selectedKid.name)} className="w-full">Delete Profile</Button>
                 </div>
               </>
             )}

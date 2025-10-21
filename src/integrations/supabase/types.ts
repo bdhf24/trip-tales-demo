@@ -118,6 +118,7 @@ export type Database = {
           created_at: string
           descriptor: string | null
           id: string
+          interests: string[] | null
           name: string
           updated_at: string
           user_id: string
@@ -128,6 +129,7 @@ export type Database = {
           created_at?: string
           descriptor?: string | null
           id?: string
+          interests?: string[] | null
           name: string
           updated_at?: string
           user_id: string
@@ -138,6 +140,7 @@ export type Database = {
           created_at?: string
           descriptor?: string | null
           id?: string
+          interests?: string[] | null
           name?: string
           updated_at?: string
           user_id?: string
@@ -154,37 +157,49 @@ export type Database = {
       }
       pages: {
         Row: {
+          activities: Json | null
           created_at: string
           heading: string
           id: string
           image_prompt: string
           image_prompt_spec: Json
           image_url: string | null
+          is_high_res: boolean | null
           page_number: number
+          preview_image_url: string | null
+          questions_for_child: Json | null
           story_id: string
           text: string
           updated_at: string
         }
         Insert: {
+          activities?: Json | null
           created_at?: string
           heading: string
           id?: string
           image_prompt: string
           image_prompt_spec: Json
           image_url?: string | null
+          is_high_res?: boolean | null
           page_number: number
+          preview_image_url?: string | null
+          questions_for_child?: Json | null
           story_id: string
           text: string
           updated_at?: string
         }
         Update: {
+          activities?: Json | null
           created_at?: string
           heading?: string
           id?: string
           image_prompt?: string
           image_prompt_spec?: Json
           image_url?: string | null
+          is_high_res?: boolean | null
           page_number?: number
+          preview_image_url?: string | null
+          questions_for_child?: Json | null
           story_id?: string
           text?: string
           updated_at?: string

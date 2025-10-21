@@ -18,6 +18,7 @@ interface GenerateAllRequest {
   size?: string;
   format?: string;
   guidance?: any;
+  previewMode?: boolean; // New: Generate preview images (512x512) instead of high-res
 }
 
 async function sleep(ms: number) {
@@ -121,6 +122,7 @@ async function generateImageWithRetry(
           size,
           format,
           guidance,
+          resolution: size === "512x512" ? "preview" : "high-res"
         }),
       });
 
@@ -179,7 +181,7 @@ serve(async (req) => {
   }
 
   try {
-    const { storyId, pages, artStyle, size = "1024x1024", format = "png", guidance } = await req.json() as GenerateAllRequest;
+    const { storyId, pages, artStyle, size = "1024x1024", format = "png", guidance, previewMode = false } = await req.json() as GenerateAllRequest;
     
     if (!storyId || !pages || !Array.isArray(pages)) {
       return new Response(
@@ -188,7 +190,9 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Starting sequential generation for ${pages.length} pages with library check`);
+    // Adjust size for preview mode
+    const actualSize = previewMode ? "512x512" : size;
+    console.log(`Starting sequential generation for ${pages.length} pages with library check (${previewMode ? 'preview' : 'high-res'} mode)`);
     
     const results = [];
     let imagesGenerated = 0;
@@ -208,7 +212,7 @@ serve(async (req) => {
         page.pageNumber,
         page.imagePrompt,
         page.imagePromptSpec || {},
-        size,
+        actualSize,
         format,
         artStyle,
         2,

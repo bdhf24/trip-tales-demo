@@ -56,7 +56,8 @@ serve(async (req) => {
       size = "1024x1024", 
       format = "png",
       guidance,
-      storyPageReferences = [] 
+      storyPageReferences = [],
+      resolution = "high-res" // "preview" or "high-res"
     } = await req.json();
     
     if (!imagePrompt || !storyId || pageNumber === undefined) {
@@ -222,10 +223,20 @@ serve(async (req) => {
       .from("story-images")
       .getPublicUrl(fileName);
 
-    // Update page with image URL
+    // Update page with image URL and resolution flag
+    const columnToUpdate = resolution === "preview" ? "preview_image_url" : "image_url";
+    const updateData: any = {
+      [columnToUpdate]: publicUrl
+    };
+    
+    // If high-res, mark as high-res
+    if (resolution === "high-res") {
+      updateData.is_high_res = true;
+    }
+    
     const { data: updatedPage, error: updateError } = await supabase
       .from('pages')
-      .update({ image_url: publicUrl })
+      .update(updateData)
       .eq('story_id', storyId)
       .eq('page_number', pageNumber)
       .select('id, image_prompt_spec, story:stories(art_style)')
