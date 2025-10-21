@@ -84,11 +84,9 @@ serve(async (req) => {
     // Add cover page
     await addCoverPage(pdfDoc, story, pages, titleFont, bodyFont);
 
-    // Add content pages
+    // Add content pages (all pages)
     for (const page of pages) {
-      if (page.page_number > 1) { // Skip title page
-        await addContentPage(pdfDoc, page, titleFont, bodyFont);
-      }
+      await addContentPage(pdfDoc, page, titleFont, bodyFont);
     }
 
     // Add back page

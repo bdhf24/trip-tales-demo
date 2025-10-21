@@ -862,57 +862,6 @@ const Story = () => {
               <h2 className="text-2xl md:text-3xl font-bold text-primary mb-6">
                 {page.heading}
               </h2>
-                <div className="space-y-4 mb-8">
-                  <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent leading-tight">
-                    {page.heading}
-                  </h2>
-                  <div className="flex justify-center">
-                    <div className="h-1 w-32 bg-gradient-to-r from-primary via-secondary to-accent rounded-full" />
-                  </div>
-                </div>
-
-                {/* Title Page Image */}
-                <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center border-4 border-dashed border-primary/30 overflow-hidden">
-                  {page.imageUrl ? (
-                    <img
-                      src={page.imageUrl}
-                      alt={page.heading}
-                      className="w-full h-full object-cover rounded-xl"
-                    />
-                  ) : page.status === "generating" ? (
-                    <div className="text-center p-8">
-                      <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Creating cover illustration...
-                      </p>
-                    </div>
-                  ) : page.status === "failed" ? (
-                    <div className="text-center p-8">
-                      <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                      <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">
-                        Failed to generate cover
-                      </p>
-                      {page.error && (
-                        <p className="text-xs text-muted-foreground mb-4">{page.error}</p>
-                      )}
-                      <Button
-                        onClick={() => retryPageImage(currentPage)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        <RotateCw className="mr-2 h-4 w-4" />
-                        Retry
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="text-center p-8">
-                      <div className="text-6xl mb-4">📖</div>
-                      <p className="text-sm font-medium text-muted-foreground max-w-md">
-                        Click "Generate Images" above to create the cover
-                      </p>
-                    </div>
-                  )}
-                </div>
 
               {/* Image */}
               <div className="relative w-full aspect-video bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center border-4 border-dashed border-primary/30 overflow-hidden">
