@@ -258,35 +258,82 @@ async function addContentPage(
 
   yPosition -= 30; // Space after heading
 
-  // Image placeholder
+  // Image embedding
   if (pageData.image_url) {
-    const imageHeight = 250;
-    const imageWidth = width - 2 * margin;
-    
-    // Draw image placeholder box
-    page.drawRectangle({
-      x: margin,
-      y: yPosition - imageHeight,
-      width: imageWidth,
-      height: imageHeight,
-      borderColor: rgb(0.8, 0.8, 0.8),
-      borderWidth: 1,
-      color: rgb(0.95, 0.95, 0.95)
-    });
+    try {
+      console.log(`[PDF Export] Fetching image from: ${pageData.image_url}`);
+      
+      // Fetch the image
+      const imageResponse = await fetch(pageData.image_url);
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+      }
+      
+      const imageBytes = await imageResponse.arrayBuffer();
+      
+      // Embed the image based on format
+      let image;
+      if (pageData.image_url.toLowerCase().endsWith('.png')) {
+        image = await pdfDoc.embedPng(imageBytes);
+      } else {
+        image = await pdfDoc.embedJpg(imageBytes);
+      }
+      
+      // Calculate dimensions to fit within the page
+      const maxImageWidth = width - 2 * margin;
+      const maxImageHeight = 300;
+      
+      const imageAspectRatio = image.width / image.height;
+      let imageWidth = maxImageWidth;
+      let imageHeight = imageWidth / imageAspectRatio;
+      
+      // If height exceeds max, scale down based on height
+      if (imageHeight > maxImageHeight) {
+        imageHeight = maxImageHeight;
+        imageWidth = imageHeight * imageAspectRatio;
+      }
+      
+      // Draw the image centered
+      page.drawImage(image, {
+        x: (width - imageWidth) / 2,
+        y: yPosition - imageHeight,
+        width: imageWidth,
+        height: imageHeight,
+      });
+      
+      yPosition -= imageHeight + 30;
+      console.log(`[PDF Export] Image embedded successfully`);
+      
+    } catch (error) {
+      console.error(`[PDF Export] Failed to embed image:`, error);
+      
+      // Fallback to placeholder if image fails to load
+      const imageHeight = 250;
+      const imageWidth = width - 2 * margin;
+      
+      page.drawRectangle({
+        x: margin,
+        y: yPosition - imageHeight,
+        width: imageWidth,
+        height: imageHeight,
+        borderColor: rgb(0.8, 0.8, 0.8),
+        borderWidth: 1,
+        color: rgb(0.95, 0.95, 0.95)
+      });
 
-    // Add "Image" text in center
-    const placeholderText = "Illustration";
-    const placeholderSize = 12;
-    const placeholderWidth = bodyFont.widthOfTextAtSize(placeholderText, placeholderSize);
-    page.drawText(placeholderText, {
-      x: (width - placeholderWidth) / 2,
-      y: yPosition - imageHeight / 2,
-      size: placeholderSize,
-      font: bodyFont,
-      color: rgb(0.6, 0.6, 0.6)
-    });
+      const placeholderText = "Image unavailable";
+      const placeholderSize = 12;
+      const placeholderWidth = bodyFont.widthOfTextAtSize(placeholderText, placeholderSize);
+      page.drawText(placeholderText, {
+        x: (width - placeholderWidth) / 2,
+        y: yPosition - imageHeight / 2,
+        size: placeholderSize,
+        font: bodyFont,
+        color: rgb(0.6, 0.6, 0.6)
+      });
 
-    yPosition -= imageHeight + 30;
+      yPosition -= imageHeight + 30;
+    }
   }
 
   // Body text
