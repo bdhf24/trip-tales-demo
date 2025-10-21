@@ -193,9 +193,16 @@ serve(async (req) => {
     const results = [];
     let imagesGenerated = 0;
     let imagesReused = 0;
+    const generatedImageUrls: string[] = []; // Track generated images for reference chaining
     
     // Generate images sequentially (concurrency = 1)
     for (const page of pages) {
+      // Enhance guidance with previously generated page images for consistency
+      const enhancedGuidance = guidance ? {
+        ...guidance,
+        storyPageReferences: generatedImageUrls.slice(-3) // Use last 3 pages as references
+      } : undefined;
+      
       const result = await generateImageWithRetry(
         storyId,
         page.pageNumber,
@@ -205,9 +212,14 @@ serve(async (req) => {
         format,
         artStyle,
         2,
-        guidance
+        enhancedGuidance
       );
       results.push(result);
+      
+      // Add generated image URL to reference chain for subsequent pages
+      if (result.imageUrl && !result.reused) {
+        generatedImageUrls.push(result.imageUrl);
+      }
       
       if (result.reused) {
         imagesReused++;

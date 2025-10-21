@@ -55,7 +55,8 @@ serve(async (req) => {
       pageNumber, 
       size = "1024x1024", 
       format = "png",
-      guidance 
+      guidance,
+      storyPageReferences = [] 
     } = await req.json();
     
     if (!imagePrompt || !storyId || pageNumber === undefined) {
@@ -86,19 +87,27 @@ serve(async (req) => {
     let messageContent: any = sanitized;
     let usedGuidance = false;
 
-    // If guidance is enabled and we have reference images
-    if (guidance?.enabled && guidance?.results && guidance.results.length > 0) {
-      console.log(`Using photo guidance with ${guidance.results.length} kids`);
+    // If guidance is enabled and we have reference images or story page references
+    if (guidance?.enabled && (guidance?.results?.length > 0 || guidance?.storyPageReferences?.length > 0)) {
+      console.log(`Using photo guidance with ${guidance.results?.length || 0} kids and ${guidance.storyPageReferences?.length || 0} story page references`);
       
       // Enhance prompt with appearance notes and descriptors
       let enhancedPrompt = sanitized;
-      for (const kidRef of guidance.results) {
-        if (kidRef.appearanceNotes) {
-          enhancedPrompt += `\n\nCharacter appearance notes for ${kidRef.kidName}: ${kidRef.appearanceNotes}`;
+      
+      if (guidance.results && guidance.results.length > 0) {
+        for (const kidRef of guidance.results) {
+          if (kidRef.appearanceNotes) {
+            enhancedPrompt += `\n\nCharacter appearance notes for ${kidRef.kidName}: ${kidRef.appearanceNotes}`;
+          }
+          if (kidRef.descriptor) {
+            enhancedPrompt += `\n\nCharacter description for ${kidRef.kidName}: ${kidRef.descriptor}`;
+          }
         }
-        if (kidRef.descriptor) {
-          enhancedPrompt += `\n\nCharacter description for ${kidRef.kidName}: ${kidRef.descriptor}`;
-        }
+      }
+      
+      // Add context about story page references for consistency
+      if (guidance.storyPageReferences && guidance.storyPageReferences.length > 0) {
+        enhancedPrompt += `\n\nMaintain consistent character appearance with previous story pages.`;
       }
       
       // Build a multi-part message with text + reference images
@@ -109,13 +118,28 @@ serve(async (req) => {
         }
       ];
 
-      // Add reference images (both photos and story pages)
-      for (const kidRef of guidance.results) {
-        for (const ref of kidRef.refs) {
+      // Add kid photo reference images
+      if (guidance.results && guidance.results.length > 0) {
+        for (const kidRef of guidance.results) {
+          for (const ref of kidRef.refs) {
+            contentParts.push({
+              type: "image_url",
+              image_url: {
+                url: ref.url
+              }
+            });
+          }
+        }
+      }
+      
+      // Add story page references for consistency (limit to last 3)
+      if (guidance.storyPageReferences && guidance.storyPageReferences.length > 0) {
+        const recentPages = guidance.storyPageReferences.slice(-3);
+        for (const pageUrl of recentPages) {
           contentParts.push({
             type: "image_url",
             image_url: {
-              url: ref.url
+              url: pageUrl
             }
           });
         }
