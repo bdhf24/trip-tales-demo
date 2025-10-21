@@ -114,7 +114,7 @@ serve(async (req) => {
       const contentParts: any[] = [
         {
           type: "text",
-          text: `${enhancedPrompt}\n\nUse the provided reference images to ensure character likeness (strength: ${guidance.strength || 0.45}). Match the hair, facial features, skin tone, and general appearance from the references.`
+          text: `${enhancedPrompt}\n\nUse the provided reference images to ensure character likeness (strength: ${guidance.strength || 0.45}). Match the hair, facial features, skin tone, and general appearance from the references.\n\nIMPORTANT: Vary the characters' poses, actions, and body positions dynamically based on the scene. Show diverse body language - standing, sitting, kneeling, running, pointing, waving, jumping, or interacting with objects in different ways. Avoid repetitive poses across pages.`
         }
       ];
 

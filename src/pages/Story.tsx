@@ -857,9 +857,11 @@ const Story = () => {
 
           {/* Story Page Card */}
           <div className="bg-card rounded-3xl shadow-2xl p-6 md:p-10 mb-8 border-4 border-primary/20">
-            {currentPage === 0 ? (
-              // Title Page - Special Layout
-              <div className="text-center space-y-6 py-8">
+            {/* All pages use the same regular layout - no special title page */}
+            <>
+              <h2 className="text-2xl md:text-3xl font-bold text-primary mb-6">
+                {page.heading}
+              </h2>
                 <div className="space-y-4 mb-8">
                   <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent leading-tight">
                     {page.heading}
@@ -912,22 +914,8 @@ const Story = () => {
                   )}
                 </div>
 
-                {/* Title Page Content */}
-                <div className="prose prose-lg max-w-none">
-                  <p className="text-xl md:text-2xl leading-relaxed text-foreground whitespace-pre-wrap font-medium">
-                    {page.text}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              // Regular Story Page
-              <>
-                <h2 className="text-2xl md:text-3xl font-bold text-primary mb-6">
-                  {page.heading}
-                </h2>
-
-                {/* Image */}
-                <div className="relative w-full aspect-video bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center border-4 border-dashed border-primary/30 overflow-hidden">
+              {/* Image */}
+              <div className="relative w-full aspect-video bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center border-4 border-dashed border-primary/30 overflow-hidden">
                   {page.imageUrl ? (
                     <>
                       <img
@@ -1000,14 +988,13 @@ const Story = () => {
                   )}
                 </div>
 
-                {/* Story Content */}
-                <div className="prose prose-lg max-w-none mb-6">
-                  <p className="text-lg md:text-xl leading-relaxed text-foreground whitespace-pre-wrap">
-                    {page.text}
-                  </p>
-                </div>
-              </>
-            )}
+              {/* Story Content */}
+              <div className="prose prose-lg max-w-none mb-6">
+                <p className="text-lg md:text-xl leading-relaxed text-foreground whitespace-pre-wrap">
+                  {page.text}
+                </p>
+              </div>
+            </>
 
             {/* Image Prompt Details */}
             <details className="mt-6 p-6 bg-muted rounded-xl">
