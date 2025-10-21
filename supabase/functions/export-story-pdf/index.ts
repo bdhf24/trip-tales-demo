@@ -324,7 +324,8 @@ async function addBackPage(pdfDoc: PDFDocument, bodyFont: any) {
   const page = pdfDoc.addPage([595, 842]);
   const { width, height } = page.getSize();
   
-  const text = "Created with TripTales ❤️";
+  // Remove emojis and special Unicode characters for WinAnsi compatibility
+  const text = "Created with TripTales";
   const textSize = 12;
   const textWidth = bodyFont.widthOfTextAtSize(text, textSize);
   
@@ -336,7 +337,7 @@ async function addBackPage(pdfDoc: PDFDocument, bodyFont: any) {
     color: rgb(0.5, 0.5, 0.6)
   });
 
-  const privacy = "Private export — not publicly indexed";
+  const privacy = "Private export - not publicly indexed";
   const privacySize = 10;
   const privacyWidth = bodyFont.widthOfTextAtSize(privacy, privacySize);
   
@@ -349,8 +350,17 @@ async function addBackPage(pdfDoc: PDFDocument, bodyFont: any) {
   });
 }
 
+// Sanitize text to remove emojis and characters not supported by WinAnsi
+function sanitizeText(text: string): string {
+  // Remove emojis and other Unicode characters that WinAnsi can't encode
+  // WinAnsi supports characters 0x20-0xFF (basic Latin + Latin-1 Supplement)
+  return text.replace(/[^\x20-\xFF]/g, '').trim();
+}
+
 function wrapText(text: string, maxWidth: number, fontSize: number, font: any): string[] {
-  const words = text.split(' ');
+  // Sanitize the text first
+  const sanitized = sanitizeText(text);
+  const words = sanitized.split(' ');
   const lines: string[] = [];
   let currentLine = '';
 

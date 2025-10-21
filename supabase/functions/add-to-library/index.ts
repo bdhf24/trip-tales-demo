@@ -61,8 +61,14 @@ function classifySceneType(scene: string): string {
 function generateTags(spec: ImagePromptSpec): string[] {
   const tags: string[] = [];
   
-  // Add character names
-  spec.characters.forEach(char => tags.push(char.kidName.toLowerCase()));
+  // Add character names (check if characters exist and is an array)
+  if (spec.characters && Array.isArray(spec.characters)) {
+    spec.characters.forEach(char => {
+      if (char && char.kidName) {
+        tags.push(char.kidName.toLowerCase());
+      }
+    });
+  }
   
   // Add location/landmark
   if (spec.location) tags.push(spec.location.toLowerCase());
@@ -75,10 +81,12 @@ function generateTags(spec: ImagePromptSpec): string[] {
   if (spec.timeOfDay) tags.push(spec.timeOfDay.toLowerCase());
   
   // Extract key words from scene
-  const sceneWords = spec.scene.toLowerCase().split(' ')
-    .filter(word => word.length > 4) // Only meaningful words
-    .slice(0, 5); // Max 5 words
-  tags.push(...sceneWords);
+  if (spec.scene) {
+    const sceneWords = spec.scene.toLowerCase().split(' ')
+      .filter(word => word.length > 4) // Only meaningful words
+      .slice(0, 5); // Max 5 words
+    tags.push(...sceneWords);
+  }
   
   return [...new Set(tags)]; // Remove duplicates
 }
@@ -101,11 +109,13 @@ serve(async (req) => {
     const sceneType = classifySceneType(imagePromptSpec.scene);
     const tags = generateTags(imagePromptSpec);
     
-    // Format characters as JSONB
-    const characters = imagePromptSpec.characters.map(c => ({
-      kidName: c.kidName,
-      descriptor: c.descriptor
-    }));
+    // Format characters as JSONB (handle missing or empty characters)
+    const characters = (imagePromptSpec.characters && Array.isArray(imagePromptSpec.characters))
+      ? imagePromptSpec.characters.map(c => ({
+          kidName: c.kidName,
+          descriptor: c.descriptor
+        }))
+      : [];
 
     // Check if already exists
     const { data: existing } = await supabase
