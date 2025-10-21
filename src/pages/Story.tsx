@@ -772,66 +772,162 @@ const Story = () => {
 
           {/* Story Page Card */}
           <div className="bg-card rounded-3xl shadow-2xl p-6 md:p-10 mb-8 border-4 border-primary/20">
-            <h2 className="text-2xl md:text-3xl font-bold text-primary mb-6">
-              {page.heading}
-            </h2>
+            {/* Check if this is the cover page (first page) */}
+            {currentPage === 0 ? (
+              /* Cover Page Layout */
+              <div className="text-center space-y-8">
+                {/* Cover Image */}
+                <div className="relative w-full aspect-[3/4] max-w-2xl mx-auto bg-gradient-to-br from-primary/30 via-secondary/30 to-accent/30 rounded-2xl flex items-center justify-center overflow-hidden mb-8">
+                  {displayImageUrl ? (
+                    <>
+                      <img
+                        src={displayImageUrl}
+                        alt={page.heading}
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                      
+                      {/* Resolution Badge */}
+                      <Badge
+                        className="absolute top-4 left-4"
+                        variant={page.isHighRes ? "default" : "secondary"}
+                      >
+                        {page.isHighRes ? "High-Res" : "Preview"}
+                      </Badge>
 
-            {/* Image with resolution badge */}
-            <div className="relative w-full aspect-video bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center overflow-hidden">
-              {displayImageUrl ? (
-                <>
-                  <img
-                    src={displayImageUrl}
-                    alt={page.heading}
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                  
-                  {/* Resolution Badge */}
-                  <Badge
-                    className="absolute top-4 left-4"
-                    variant={page.isHighRes ? "default" : "secondary"}
-                  >
-                    {page.isHighRes ? "High-Res" : "Preview"}
-                  </Badge>
-
-                  {/* Upgrade Button for individual page */}
-                  {hasPreviewOnly && (
-                    <Button
-                      size="sm"
-                      onClick={() => upgradeToHighRes([currentPage])}
-                      disabled={upgradingPages.has(currentPage)}
-                      className="absolute bottom-4 right-4"
-                    >
-                      {upgradingPages.has(currentPage) ? (
-                        <>
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                          Upgrading...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-3 w-3 mr-1" />
-                          Upgrade to High-Res
-                        </>
+                      {/* Upgrade Button for cover */}
+                      {hasPreviewOnly && (
+                        <Button
+                          size="sm"
+                          onClick={() => upgradeToHighRes([currentPage])}
+                          disabled={upgradingPages.has(currentPage)}
+                          className="absolute bottom-4 right-4"
+                        >
+                          {upgradingPages.has(currentPage) ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              Upgrading...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              Upgrade to High-Res
+                            </>
+                          )}
+                        </Button>
                       )}
-                    </Button>
+                    </>
+                  ) : (
+                    <div className="text-center p-8">
+                      <Palette className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Click "Generate {previewMode ? 'Previews' : 'Images'}" above
+                      </p>
+                    </div>
                   )}
-                </>
-              ) : (
-                <div className="text-center p-8">
-                  <Palette className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Click "Generate {previewMode ? 'Previews' : 'Images'}" above
+                </div>
+
+                {/* Cover Text - Parse and display beautifully */}
+                <div className="space-y-6">
+                  <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent leading-tight">
+                    {page.heading}
+                  </h1>
+                  
+                  {/* Parse the text to extract details */}
+                  {page.text.split('\n\n').map((section, index) => {
+                    // Skip the first line if it says "A Travel Adventure Story"
+                    if (section.trim() === 'A Travel Adventure Story') {
+                      return (
+                        <p key={index} className="text-xl text-muted-foreground italic">
+                          {section}
+                        </p>
+                      );
+                    }
+                    
+                    // Handle "Featuring:", "Destination:", "Time:" lines
+                    if (section.includes(':')) {
+                      const [label, ...valueParts] = section.split(':');
+                      const value = valueParts.join(':').trim();
+                      return (
+                        <div key={index} className="text-lg md:text-xl">
+                          <span className="font-semibold text-primary">{label}:</span>{' '}
+                          <span className="text-foreground">{value}</span>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <p key={index} className="text-lg text-foreground">
+                        {section}
+                      </p>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* Regular Story Page Layout */
+              <>
+                <h2 className="text-2xl md:text-3xl font-bold text-primary mb-6">
+                  {page.heading}
+                </h2>
+
+                {/* Image with resolution badge */}
+                <div className="relative w-full aspect-video bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center overflow-hidden">
+                  {displayImageUrl ? (
+                    <>
+                      <img
+                        src={displayImageUrl}
+                        alt={page.heading}
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                      
+                      {/* Resolution Badge */}
+                      <Badge
+                        className="absolute top-4 left-4"
+                        variant={page.isHighRes ? "default" : "secondary"}
+                      >
+                        {page.isHighRes ? "High-Res" : "Preview"}
+                      </Badge>
+
+                      {/* Upgrade Button for individual page */}
+                      {hasPreviewOnly && (
+                        <Button
+                          size="sm"
+                          onClick={() => upgradeToHighRes([currentPage])}
+                          disabled={upgradingPages.has(currentPage)}
+                          className="absolute bottom-4 right-4"
+                        >
+                          {upgradingPages.has(currentPage) ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              Upgrading...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              Upgrade to High-Res
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center p-8">
+                      <Palette className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Click "Generate {previewMode ? 'Previews' : 'Images'}" above
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Story Text */}
+                <div className="prose prose-lg max-w-none mb-8">
+                  <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+                    {page.text}
                   </p>
                 </div>
-              )}
-            </div>
-
-            {/* Story Text */}
-            <div className="prose prose-lg max-w-none mb-8">
-              <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-                {page.text}
-              </p>
-            </div>
+              </>
+            )}
 
             {/* Interactive Elements */}
             {(page.questions && page.questions.length > 0) || (page.activities && page.activities.length > 0) ? (
