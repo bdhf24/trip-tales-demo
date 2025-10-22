@@ -929,68 +929,84 @@ const Story = () => {
               </>
             )}
 
-            {/* Interactive Elements */}
-            {(page.questions && page.questions.length > 0) || (page.activities && page.activities.length > 0) ? (
-              <div className="space-y-4 mt-8">
-                {/* Questions Section */}
-                {page.questions && page.questions.length > 0 && (
-                  <Collapsible open={showInteractive} onOpenChange={setShowInteractive}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-950/30 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <MessageCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        <span className="font-semibold text-blue-900 dark:text-blue-100">
-                          Questions to Ask Your Child
-                        </span>
-                      </div>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${showInteractive ? 'rotate-180' : ''}`} />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 p-4 bg-blue-50/50 dark:bg-blue-950/10 rounded-lg">
-                      <ul className="space-y-2">
-                        {page.questions.map((question, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <span className="text-blue-600 dark:text-blue-400 font-bold">•</span>
-                            <span className="text-sm text-foreground">{question}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
-
-                {/* Activities Section */}
-                {page.activities && page.activities.length > 0 && (
-                  <Collapsible defaultOpen={showInteractive}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-green-50 dark:bg-green-950/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-950/30 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        <span className="font-semibold text-green-900 dark:text-green-100">
-                          Try This!
-                        </span>
-                      </div>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${showInteractive ? 'rotate-180' : ''}`} />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 space-y-3">
-                      {page.activities.map((activity, index) => (
-                        <div key={index} className="p-4 bg-green-50/50 dark:bg-green-950/10 rounded-lg">
-                          <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2">
-                            {activity.title}
-                          </h4>
-                          <p className="text-sm text-foreground mb-2">
-                            {activity.description}
-                          </p>
-                          {activity.materials && (
-                            <p className="text-xs text-muted-foreground">
-                              <strong>Materials:</strong> {activity.materials}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
-              </div>
-            ) : null}
           </div>
+
+          {/* Interactive Activities & Questions Section - After Last Page */}
+          {currentPage === totalPages - 1 && (
+            <div className="bg-card rounded-3xl shadow-2xl p-6 md:p-10 mb-8 border-4 border-accent/20 mt-8">
+              <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 bg-gradient-to-r from-blue-600 via-green-600 to-purple-600 bg-clip-text text-transparent">
+                Try These Activities!
+              </h2>
+              
+              <div className="space-y-8">
+                {story.generatedPages.map((pageItem, pageIndex) => {
+                  const hasContent = (pageItem.questions && pageItem.questions.length > 0) || 
+                                    (pageItem.activities && pageItem.activities.length > 0);
+                  
+                  if (!hasContent) return null;
+                  
+                  return (
+                    <div key={pageIndex} className="border-l-4 border-primary pl-6">
+                      <h3 className="text-xl font-bold text-primary mb-4">
+                        Page {pageIndex + 1}: {pageItem.heading}
+                      </h3>
+                      
+                      <div className="space-y-4">
+                        {/* Questions Section */}
+                        {pageItem.questions && pageItem.questions.length > 0 && (
+                          <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <MessageCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                                Questions to Ask Your Child
+                              </h4>
+                            </div>
+                            <ul className="space-y-2">
+                              {pageItem.questions.map((question, qIndex) => (
+                                <li key={qIndex} className="flex items-start gap-2">
+                                  <span className="text-blue-600 dark:text-blue-400 font-bold">•</span>
+                                  <span className="text-sm text-foreground">{question}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {/* Activities Section */}
+                        {pageItem.activities && pageItem.activities.length > 0 && (
+                          <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
+                              <h4 className="font-semibold text-green-900 dark:text-green-100">
+                                Try This!
+                              </h4>
+                            </div>
+                            <div className="space-y-3">
+                              {pageItem.activities.map((activity, aIndex) => (
+                                <div key={aIndex} className="bg-green-50/50 dark:bg-green-950/10 rounded-lg p-3">
+                                  <h5 className="font-semibold text-green-900 dark:text-green-100 mb-1">
+                                    {activity.title}
+                                  </h5>
+                                  <p className="text-sm text-foreground mb-1">
+                                    {activity.description}
+                                  </p>
+                                  {activity.materials && (
+                                    <p className="text-xs text-muted-foreground">
+                                      <strong>Materials:</strong> {activity.materials}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Navigation */}
           <div className="flex items-center justify-between mb-8">
