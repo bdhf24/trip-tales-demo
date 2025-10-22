@@ -2,10 +2,16 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type ArtStylePreset = "storybook-cozy" | "watercolor-soft" | "travel-sketch";
-type CharacterSheet = {
-  leo: { age: number; hair: string; outfit: string; trait: string };
-  sasha: { age: number; hair: string; accessory: string; trait: string };
+
+type KidProfile = {
+  id: string;
+  name: string;
+  age: number;
+  descriptor: string | null;
+  appearance_notes: string | null;
+  interests: string[];
 };
+
 type ImagePromptSpec = {
   stylePreset: ArtStylePreset;
   scene: string;
@@ -15,44 +21,31 @@ type ImagePromptSpec = {
   consistencyTags: string[];
 };
 
-const CHARACTER_SHEET: CharacterSheet = {
-  leo: {
-    age: 8,
-    hair: "short brown",
-    outfit: "sporty travel wear",
-    trait: "soccer-loving",
-  },
-  sasha: {
-    age: 5,
-    hair: "long brown",
-    accessory: "unicorn hairclip",
-    trait: "unicorn-loving",
-  },
-};
-
 const STYLE_DESCRIPTIONS: Record<ArtStylePreset, string> = {
   "storybook-cozy": "warm storybook illustration style with soft shading, gentle colors, inviting and cozy atmosphere",
   "watercolor-soft": "delicate watercolor painting with flowing colors, soft edges, dreamy and ethereal quality",
   "travel-sketch": "charming travel sketch style with loose linework, hand-drawn details, spontaneous and lively feel",
 };
 
-function buildImagePrompt(spec: ImagePromptSpec, kids: string[]): string {
+function buildImagePrompt(spec: ImagePromptSpec, kidProfiles: KidProfile[]): string {
   const styleDesc = STYLE_DESCRIPTIONS[spec.stylePreset];
   const characters: string[] = [];
   
-  // Build character descriptions from character sheet
-  kids.forEach(kidName => {
-    const normalizedName = kidName.toLowerCase();
-    if (normalizedName === "leo" && CHARACTER_SHEET.leo) {
-      const leo = CHARACTER_SHEET.leo;
-      characters.push(`Leo (${leo.age} years old, ${leo.hair} hair, ${leo.outfit}, ${leo.trait})`);
-    } else if (normalizedName === "sasha" && CHARACTER_SHEET.sasha) {
-      const sasha = CHARACTER_SHEET.sasha;
-      characters.push(`Sasha (${sasha.age} years old, ${sasha.hair} hair, wearing ${sasha.accessory}, ${sasha.trait})`);
-    } else {
-      // Generic character description for other names
-      characters.push(`${kidName} (child traveler)`);
+  // Build character descriptions from actual kid profile data
+  kidProfiles.forEach(kid => {
+    const parts = [kid.name, `${kid.age} years old`];
+    
+    // Add descriptor if available (e.g., "curly-haired blonde girl")
+    if (kid.descriptor) {
+      parts.push(kid.descriptor);
     }
+    
+    // Add appearance notes if available (e.g., "blue eyes, freckles")
+    if (kid.appearance_notes) {
+      parts.push(kid.appearance_notes);
+    }
+    
+    characters.push(parts.join(", "));
   });
 
   const characterDesc = characters.length > 0 ? characters.join(" and ") : "children";
@@ -88,20 +81,24 @@ serve(async (req) => {
       artStylePreset = "storybook-cozy" as ArtStylePreset
     } = await req.json();
     
-    // Query kid interests from database if kids have profiles
+    // Fetch full kid profile data from database
+    let kidProfiles: KidProfile[] = [];
     let kidInterests: string[] = [];
+    
     if (kids && kids.length > 0) {
       try {
         const { data: kidsData } = await supabase
           .from('kids')
-          .select('interests')
+          .select('id, name, age, descriptor, appearance_notes, interests')
           .in('name', kids);
         
         if (kidsData) {
+          kidProfiles = kidsData;
           kidInterests = kidsData.flatMap(k => k.interests || []);
+          console.log('Fetched kid profiles:', kidProfiles);
         }
       } catch (error) {
-        console.error('Error fetching kid interests:', error);
+        console.error('Error fetching kid profiles:', error);
       }
     }
     
@@ -386,8 +383,8 @@ The questions should be open-ended and encourage discussion. Activities should b
         ],
       };
       
-      // Build the final image prompt string
-      const imagePrompt = buildImagePrompt(imagePromptSpec, kids);
+      // Build the final image prompt string using actual kid profiles
+      const imagePrompt = buildImagePrompt(imagePromptSpec, kidProfiles);
       
       generatedPages.push({
         ...pageArgs,
@@ -438,7 +435,7 @@ The questions should be open-ended and encourage discussion. Activities should b
       ],
     };
 
-    const titlePagePrompt = buildImagePrompt(titlePageImageSpec, kids);
+    const titlePagePrompt = buildImagePrompt(titlePageImageSpec, kidProfiles);
     const kidsText = kids.length > 1 ? kids.slice(0, -1).join(", ") + " and " + kids[kids.length - 1] : kids[0];
 
     await supabase
