@@ -75,7 +75,7 @@ const NewStory = () => {
         console.error("Error fetching kids:", error);
         toast({
           title: "Failed to load profiles",
-          description: "Could not load saved kid profiles",
+          description: "Could not load saved Character Profiles",
           variant: "destructive",
         });
       }
@@ -343,7 +343,7 @@ const NewStory = () => {
 
                 {kidInterests.length > 0 && (
                   <p className="text-sm text-blue-600 dark:text-blue-400">
-                    ✨ Auto-populated from kid profiles: {kidInterests.join(", ")}
+                    ✨ Auto-populated from Character Profiles: {kidInterests.join(", ")}
                   </p>
                 )}
 
