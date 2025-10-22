@@ -69,7 +69,21 @@ serve(async (req) => {
     }
 
     // Use vision model to extract descriptor
-    const systemPrompt = `You are creating a safe, high-level visual character descriptor for a children's picture-book. Do NOT identify brands, exact locations, or sensitive info. Describe only: approximate hair style & color, skin tone in broad terms, eye impression (color optional), typical clothing style/colors, notable accessories (e.g., unicorn clip), and general vibe (e.g., sporty). Keep to 35–60 words. Start with the child's name and age.`;
+    const systemPrompt = `You are creating a DISTINCTIVE visual character descriptor for a children's picture-book. Focus on UNIQUE identifying features that differentiate this child from others.
+
+CRITICAL: Be specific and distinctive. Avoid generic terms like "kind eyes" or "friendly smile" that could apply to anyone.
+
+Describe in detail:
+1. FACE SHAPE: oval, round, heart-shaped, square, long, etc.
+2. HAIR: exact texture (straight, wavy, curly, coily), length (shoulder, chin, pixie, long), specific style (ponytail, braids, bangs, side-part), precise color (golden blonde, auburn, jet-black, light brown, dark brown, etc.)
+3. EYES: shape (almond, round, wide-set, close-set), color if visible (blue, brown, hazel, green), and any distinctive features (long lashes, expressive brows)
+4. NOSE & MOUTH: distinctive features (button nose, pronounced nose, small lips, full lips, gap in teeth, dimples)
+5. SKIN TONE: be specific (fair with rosy cheeks, warm beige, light brown, medium brown, deep brown, olive, etc.)
+6. DISTINCTIVE FEATURES: freckles, birthmarks, glasses style, unique accessories (specific hair clips, headbands, jewelry)
+7. CLOTHING STYLE: specific preferences (always in dresses, sporty athletic wear, graphic tees, bright colors, pastels, etc.)
+8. BODY TYPE/BUILD: petite, tall for age, athletic, stocky, slim, etc.
+
+Start with "${kid.name}, age ${kid.age}:" then provide 50-80 words of SPECIFIC, DISTINCTIVE details. Make this description unique enough that it couldn't describe any other child.`;
 
     const content = [
       {
