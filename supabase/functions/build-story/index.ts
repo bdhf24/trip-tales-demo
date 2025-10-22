@@ -52,7 +52,7 @@ function buildImagePrompt(spec: ImagePromptSpec, kidProfiles: KidProfile[]): str
   const landmarkPart = spec.landmarkDetail ? `, featuring ${spec.landmarkDetail}` : "";
   const timePart = spec.timeOfDay ? `, ${spec.timeOfDay} lighting` : "";
   
-  return `${styleDesc}. Scene: ${spec.scene}${landmarkPart}. Characters: ${characterDesc}. Mood: ${spec.mood}${timePart}. ${spec.consistencyTags.join(", ")}`;
+  return `${styleDesc}. Scene: ${spec.scene}${landmarkPart}. Characters: ${characterDesc}. Mood: ${spec.mood}${timePart}. ${spec.consistencyTags.join(", ")}. CRITICAL: Use wide-angle framing showing complete characters from head to toe with plenty of space around them, no cropping of bodies, centered composition.`;
 }
 
 const corsHeaders = {

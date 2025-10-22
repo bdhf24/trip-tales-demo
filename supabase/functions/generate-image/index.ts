@@ -123,12 +123,15 @@ CRITICAL CHARACTER CONSISTENCY REQUIREMENTS:
 - Each character MUST look identical to their reference photos in every scene
 - Character appearance strength: ${guidance.strength || 0.45}
 
-FRAMING AND COMPOSITION:
-- Keep all characters fully visible and properly framed within the image
-- Center important subjects, avoid cutting off heads, hands, or feet
-- Ensure characters are not cropped or cut off at the edges
-- Maintain clear visibility of all character faces
-- Use appropriate scene composition with characters in the foreground
+CRITICAL FRAMING AND COMPOSITION RULES - FOLLOW EXACTLY:
+- WIDE SHOT REQUIRED: Use a wide camera angle that shows the full scene with plenty of space around characters
+- FULL BODY FRAMING: Show characters from head to toe completely within the frame
+- NO CROPPING: Absolutely do not crop or cut off ANY part of characters - heads, bodies, arms, legs, or feet MUST be fully visible
+- ADEQUATE SPACING: Leave substantial empty space (at least 20% of image) around all sides of characters
+- CENTERED COMPOSITION: Position all characters in the CENTER of the frame, not at edges
+- ZOOM OUT: The camera should be pulled back far enough to capture the entire scene and all characters completely
+- ENVIRONMENTAL CONTEXT: Include the full surrounding environment - ground, sky, and background elements
+- COMPLETE VISIBILITY: Every person and object mentioned in the scene description must be completely visible and unobstructed
 
 POSE VARIATION (while maintaining appearance):
 - Vary poses, actions, and body language dynamically based on the scene
