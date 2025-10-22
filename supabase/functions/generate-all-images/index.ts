@@ -220,8 +220,9 @@ serve(async (req) => {
       );
       results.push(result);
       
-      // Add generated image URL to reference chain for subsequent pages
-      if (result.imageUrl && !result.reused) {
+      // Add ALL generated image URLs (including reused) to reference chain for consistency
+      // This ensures subsequent pages maintain character appearance from earlier pages
+      if (result.imageUrl) {
         generatedImageUrls.push(result.imageUrl);
       }
       

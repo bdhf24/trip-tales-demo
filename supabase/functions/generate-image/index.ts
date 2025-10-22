@@ -115,7 +115,26 @@ serve(async (req) => {
       const contentParts: any[] = [
         {
           type: "text",
-          text: `${enhancedPrompt}\n\nUse the provided reference images to ensure character likeness (strength: ${guidance.strength || 0.45}). Match the hair, facial features, skin tone, and general appearance from the references.\n\nIMPORTANT: Vary the characters' poses, actions, and body positions dynamically based on the scene. Show diverse body language - standing, sitting, kneeling, running, pointing, waving, jumping, or interacting with objects in different ways. Avoid repetitive poses across pages.`
+          text: `${enhancedPrompt}
+
+CRITICAL CHARACTER CONSISTENCY REQUIREMENTS:
+- Use the provided reference images to maintain EXACT character appearance throughout the entire story
+- Match PRECISELY: hair color, hair style, facial features, eye color, skin tone, face shape, and body type from the references
+- Each character MUST look identical to their reference photos in every scene
+- Character appearance strength: ${guidance.strength || 0.45}
+
+FRAMING AND COMPOSITION:
+- Keep all characters fully visible and properly framed within the image
+- Center important subjects, avoid cutting off heads, hands, or feet
+- Ensure characters are not cropped or cut off at the edges
+- Maintain clear visibility of all character faces
+- Use appropriate scene composition with characters in the foreground
+
+POSE VARIATION (while maintaining appearance):
+- Vary poses, actions, and body language dynamically based on the scene
+- Show diverse activities: standing, sitting, kneeling, running, pointing, waving, jumping, or interacting with objects
+- Keep character APPEARANCE consistent while changing their ACTIONS and POSES
+- Avoid repetitive poses across pages, but maintain the same character likeness`
         }
       ];
 
