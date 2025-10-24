@@ -932,81 +932,94 @@ const Story = () => {
           </div>
 
           {/* Interactive Activities & Questions Section - After Last Page */}
-          {currentPage === totalPages - 1 && (
-            <div className="bg-card rounded-3xl shadow-2xl p-6 md:p-10 mb-8 border-4 border-accent/20 mt-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 bg-gradient-to-r from-blue-600 via-green-600 to-purple-600 bg-clip-text text-transparent">
-                Try These Activities!
-              </h2>
-              
-              <div className="space-y-8">
-                {story.generatedPages.map((pageItem, pageIndex) => {
-                  const hasContent = (pageItem.questions && pageItem.questions.length > 0) || 
-                                    (pageItem.activities && pageItem.activities.length > 0);
-                  
-                  if (!hasContent) return null;
-                  
-                  return (
-                    <div key={pageIndex} className="border-l-4 border-primary pl-6">
-                      <h3 className="text-xl font-bold text-primary mb-4">
-                        Page {pageIndex + 1}: {pageItem.heading}
+          {currentPage === totalPages - 1 && (() => {
+            // Collect all questions and activities from all pages
+            const allQuestions: string[] = [];
+            const allActivities: Array<{ title: string; description: string; materials?: string }> = [];
+            
+            story.generatedPages.forEach((pageItem) => {
+              if (pageItem.questions) {
+                allQuestions.push(...pageItem.questions);
+              }
+              if (pageItem.activities) {
+                allActivities.push(...pageItem.activities);
+              }
+            });
+            
+            // Limit to max 5 of each
+            const displayQuestions = allQuestions.slice(0, 5);
+            const displayActivities = allActivities.slice(0, 5);
+            
+            if (displayQuestions.length === 0 && displayActivities.length === 0) {
+              return null;
+            }
+            
+            return (
+              <div className="space-y-6 mt-8">
+                <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 bg-gradient-to-r from-blue-600 via-green-600 to-purple-600 bg-clip-text text-transparent">
+                  Try These Activities!
+                </h2>
+                
+                {/* Questions Box */}
+                {displayQuestions.length > 0 && (
+                  <div className="bg-card rounded-2xl shadow-xl p-6 md:p-8 border-2 border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center gap-3 mb-6">
+                      <MessageCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      <h3 className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                        Questions to Ask Your Child
                       </h3>
-                      
-                      <div className="space-y-4">
-                        {/* Questions Section */}
-                        {pageItem.questions && pageItem.questions.length > 0 && (
-                          <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                              <MessageCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                              <h4 className="font-semibold text-blue-900 dark:text-blue-100">
-                                Questions to Ask Your Child
-                              </h4>
-                            </div>
-                            <ul className="space-y-2">
-                              {pageItem.questions.map((question, qIndex) => (
-                                <li key={qIndex} className="flex items-start gap-2">
-                                  <span className="text-blue-600 dark:text-blue-400 font-bold">•</span>
-                                  <span className="text-sm text-foreground">{question}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {/* Activities Section */}
-                        {pageItem.activities && pageItem.activities.length > 0 && (
-                          <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
-                              <h4 className="font-semibold text-green-900 dark:text-green-100">
-                                Try This!
-                              </h4>
-                            </div>
-                            <div className="space-y-3">
-                              {pageItem.activities.map((activity, aIndex) => (
-                                <div key={aIndex} className="bg-green-50/50 dark:bg-green-950/10 rounded-lg p-3">
-                                  <h5 className="font-semibold text-green-900 dark:text-green-100 mb-1">
-                                    {activity.title}
-                                  </h5>
-                                  <p className="text-sm text-foreground mb-1">
-                                    {activity.description}
-                                  </p>
-                                  {activity.materials && (
-                                    <p className="text-xs text-muted-foreground">
-                                      <strong>Materials:</strong> {activity.materials}
-                                    </p>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
                     </div>
-                  );
-                })}
+                    <ul className="space-y-3">
+                      {displayQuestions.map((question, qIndex) => (
+                        <li key={qIndex} className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                          <span className="text-blue-600 dark:text-blue-400 font-bold text-lg mt-0.5">
+                            {qIndex + 1}.
+                          </span>
+                          <span className="text-base text-foreground leading-relaxed flex-1">{question}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {/* Activities Box */}
+                {displayActivities.length > 0 && (
+                  <div className="bg-card rounded-2xl shadow-xl p-6 md:p-8 border-2 border-green-200 dark:border-green-800">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Sparkles className="h-6 w-6 text-green-600 dark:text-green-400" />
+                      <h3 className="text-2xl font-bold text-green-900 dark:text-green-100">
+                        Things to Try
+                      </h3>
+                    </div>
+                    <div className="space-y-4">
+                      {displayActivities.map((activity, aIndex) => (
+                        <div key={aIndex} className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800/50">
+                          <div className="flex items-start gap-3">
+                            <span className="text-green-600 dark:text-green-400 font-bold text-lg mt-0.5">
+                              {aIndex + 1}.
+                            </span>
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-green-900 dark:text-green-100 text-lg mb-2">
+                                {activity.title}
+                              </h4>
+                              <p className="text-base text-foreground leading-relaxed mb-2">
+                                {activity.description}
+                              </p>
+                              {activity.materials && (
+                                <p className="text-sm text-muted-foreground">
+                                  <strong>Materials needed:</strong> {activity.materials}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Navigation */}
           <div className="flex items-center justify-between mb-8">

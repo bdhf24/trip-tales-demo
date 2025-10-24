@@ -146,8 +146,15 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[PDF Export] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to export PDF';
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('[PDF Export] Stack:', errorStack);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to export PDF' }),
+      JSON.stringify({ 
+        error: errorMessage,
+        details: errorStack,
+        timestamp: new Date().toISOString()
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

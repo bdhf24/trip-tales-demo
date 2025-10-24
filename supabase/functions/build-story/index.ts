@@ -423,15 +423,16 @@ The questions should be open-ended and encourage discussion. Activities should b
     // Create title page (page 1)
     const titlePageImageSpec: ImagePromptSpec = {
       stylePreset: artStylePreset,
-      scene: `Book cover showing ${destination} with decorative title page design`,
+      scene: `Book cover showing ${destination} with ${kidsString} standing in front of iconic landmarks`,
       landmarkDetail: `iconic landmarks of ${destination}`,
       mood: baseMood,
       timeOfDay: "golden hour",
       consistencyTags: [
         "children's book cover",
-        "title page design",
-        "decorative border",
+        "group portrait with landmarks",
         "travel theme",
+        "decorative composition",
+        "all characters visible and centered",
       ],
     };
 
