@@ -553,13 +553,26 @@ const Story = () => {
       <main className="container mx-auto px-4 py-12">
         <div className="w-full max-w-4xl mx-auto">
           {/* Story Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              {story.kids.join(" & ")}'s Adventure
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              {story.destination} • {story.month}
-            </p>
+          <div className="mb-8">
+            <div className="flex items-start justify-between gap-4">
+              <div className="text-center flex-1">
+                <h1 className="text-3xl md:text-4xl font-bold mb-2">
+                  {story.kids.join(" & ")}'s Adventure
+                </h1>
+                <p className="text-lg text-muted-foreground">
+                  {story.destination} • {story.month}
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate('/new-story')}
+                variant="outline"
+                size="lg"
+                className="shrink-0"
+              >
+                <RotateCw className="mr-2 h-4 w-4" />
+                Recreate Story
+              </Button>
+            </div>
           </div>
 
           {/* Image Generation Controls */}
