@@ -50,6 +50,7 @@ interface GeneratedPage {
 
 interface StoryData {
   storyId: string;
+  title: string;
   destination: string;
   month: string;
   tone: string;
@@ -122,6 +123,7 @@ const Story = () => {
 
         const loadedStory: StoryData = {
           storyId: data.story.id,
+          title: data.story.title,
           destination: data.story.destination,
           month: data.story.month,
           tone: data.story.tone,
@@ -733,9 +735,18 @@ const Story = () => {
                         body: { storyId: id },
                       });
                       if (error) throw error;
-                      setPdfUrl(data.url);
+                      setPdfUrl(data.pdfUrl);
                       setPdfFileSize(data.fileSize);
-                      toast({ title: "PDF Exported", description: "Your PDF is ready to download." });
+                      
+                      // Automatically trigger download
+                      const link = document.createElement('a');
+                      link.href = data.pdfUrl;
+                      link.download = `${story?.title || 'story'}.pdf`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      
+                      toast({ title: "PDF Downloaded", description: "Your PDF has been saved to Downloads." });
                     } catch (error) {
                       console.error("Error exporting PDF:", error);
                       toast({ title: "Error", description: "Failed to export PDF", variant: "destructive" });
