@@ -66,5 +66,5 @@ verify_jwt = false
 [functions.stories-get]
 verify_jwt = false
 
-[functions.export-story-pdf]
+[functions.export-pdf]
 verify_jwt = false
