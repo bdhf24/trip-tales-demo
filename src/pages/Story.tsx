@@ -738,13 +738,21 @@ const Story = () => {
                       setPdfUrl(data.pdfUrl);
                       setPdfFileSize(data.fileSize);
                       
-                      // Automatically trigger download
+                      // Fetch PDF as blob to avoid cross-origin download issues
+                      const response = await fetch(data.pdfUrl);
+                      const blob = await response.blob();
+                      
+                      // Create object URL and trigger download
+                      const blobUrl = URL.createObjectURL(blob);
                       const link = document.createElement('a');
-                      link.href = data.pdfUrl;
+                      link.href = blobUrl;
                       link.download = `${story?.title || 'story'}.pdf`;
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
+                      
+                      // Clean up object URL
+                      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
                       
                       toast({ title: "PDF Downloaded", description: "Your PDF has been saved to Downloads." });
                     } catch (error) {
