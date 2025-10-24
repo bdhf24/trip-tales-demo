@@ -1,15 +1,15 @@
 -- Create reference_images table to store story pages marked as character references
 CREATE TABLE public.reference_images (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  kid_id uuid NOT NULL REFERENCES public.kids(id) ON DELETE CASCADE,
+  character_id uuid NOT NULL REFERENCES public.characters(id) ON DELETE CASCADE,
   page_id uuid NOT NULL REFERENCES public.pages(id) ON DELETE CASCADE,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   notes text,
-  UNIQUE(kid_id, page_id)
+  UNIQUE(character_id, page_id)
 );
 
--- Add appearance_notes to kids table for user feedback
-ALTER TABLE public.kids ADD COLUMN appearance_notes text;
+-- Add appearance_notes to characters table for user feedback
+ALTER TABLE public.characters ADD COLUMN appearance_notes text;
 
 -- Enable RLS on reference_images
 ALTER TABLE public.reference_images ENABLE ROW LEVEL SECURITY;

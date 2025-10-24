@@ -26,7 +26,7 @@ const Navbar = () => {
             <Link to="/kids">
               <Button variant="ghost" size="sm" className="gap-2">
                 <Users className="h-4 w-4" />
-                Kids
+                Characters
               </Button>
             </Link>
             <Link to="/new">

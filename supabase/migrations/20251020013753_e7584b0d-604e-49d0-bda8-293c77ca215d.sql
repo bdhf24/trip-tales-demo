@@ -49,16 +49,16 @@ CREATE TABLE public.kid_photos (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
-ALTER TABLE public.kid_photos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.character_photos ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Kid photos are viewable by everyone" 
-ON public.kid_photos FOR SELECT USING (true);
+CREATE POLICY "Character photos are viewable by everyone" 
+ON public.character_photos FOR SELECT USING (true);
 
-CREATE POLICY "Anyone can create kid photos" 
-ON public.kid_photos FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can create character photos" 
+ON public.character_photos FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Anyone can delete kid photos" 
-ON public.kid_photos FOR DELETE USING (true);
+CREATE POLICY "Anyone can delete character photos" 
+ON public.character_photos FOR DELETE USING (true);
 
 -- Create stories table
 CREATE TABLE public.stories (
@@ -70,7 +70,7 @@ CREATE TABLE public.stories (
   length INTEGER NOT NULL,
   tone TEXT NOT NULL,
   interests TEXT[] NOT NULL DEFAULT '{}',
-  kids_json JSONB NOT NULL,
+  characters_json JSONB NOT NULL,
   art_style TEXT NOT NULL,
   outline_json JSONB NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -120,29 +120,29 @@ ON public.pages FOR UPDATE USING (true);
 CREATE POLICY "Anyone can delete pages" 
 ON public.pages FOR DELETE USING (true);
 
--- Create storage bucket for kid photos
+-- Create storage bucket for character photos
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('kid-photos', 'kid-photos', true)
+VALUES ('character-photos', 'character-photos', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Storage policies for kid photos
-CREATE POLICY "Kid photos are publicly accessible" 
+-- Storage policies for character photos
+CREATE POLICY "Character photos are publicly accessible" 
 ON storage.objects FOR SELECT 
-USING (bucket_id = 'kid-photos');
+USING (bucket_id = 'character-photos');
 
-CREATE POLICY "Anyone can upload kid photos" 
+CREATE POLICY "Anyone can upload character photos" 
 ON storage.objects FOR INSERT 
-WITH CHECK (bucket_id = 'kid-photos');
+WITH CHECK (bucket_id = 'character-photos');
 
-CREATE POLICY "Anyone can update kid photos" 
+CREATE POLICY "Anyone can update character photos" 
 ON storage.objects FOR UPDATE 
-USING (bucket_id = 'kid-photos');
+USING (bucket_id = 'character-photos');
 
-CREATE POLICY "Anyone can delete kid photos" 
+CREATE POLICY "Anyone can delete character photos" 
 ON storage.objects FOR DELETE 
-USING (bucket_id = 'kid-photos');
+USING (bucket_id = 'character-photos');
 
--- Trigger for updating updated_at on kids
+-- Trigger for updating updated_at on characters
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -151,8 +151,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
-CREATE TRIGGER update_kids_updated_at
-BEFORE UPDATE ON public.kids
+CREATE TRIGGER update_characters_updated_at
+BEFORE UPDATE ON public.characters
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 

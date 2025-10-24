@@ -291,19 +291,19 @@ const Kids = () => {
       <div className="container max-w-6xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Kids Profiles</h1>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Character Profiles</h1>
             <p className="text-muted-foreground">Upload photos and add interests to create character descriptors for stories</p>
           </div>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="w-4 h-4 mr-2" />
-                Add Kid
+                Add Character
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create Kid Profile</DialogTitle>
+                <DialogTitle>Create Character Profile</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -336,7 +336,7 @@ const Kids = () => {
         {kids.length === 0 ? (
           <Card className="p-12 text-center">
             <User className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-2xl font-semibold mb-2">No kids profiles yet</h2>
+            <h2 className="text-2xl font-semibold mb-2">No character profiles yet</h2>
             <p className="text-muted-foreground mb-6">
               Create profiles to add character consistency to your stories
             </p>

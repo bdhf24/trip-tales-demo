@@ -178,6 +178,51 @@ async function generateHash(story: any, pages: any[]): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function fetchImageWithRetry(imageUrl: string, maxRetries: number = 3): Promise<ArrayBuffer> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[PDF Export] Fetching image (attempt ${attempt}/${maxRetries}): ${imageUrl}`);
+      
+      // Try different approaches based on the URL
+      let response;
+      
+      if (imageUrl.includes('supabase')) {
+        // For Supabase URLs, try with different headers
+        response = await fetch(imageUrl, {
+          headers: {
+            'Accept': 'image/*',
+            'User-Agent': 'TripTales-PDF-Export/1.0',
+            'Cache-Control': 'no-cache'
+          }
+        });
+      } else {
+        // For other URLs, use basic fetch
+        response = await fetch(imageUrl);
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const imageBytes = await response.arrayBuffer();
+      console.log(`[PDF Export] Image fetched successfully on attempt ${attempt}, size: ${imageBytes.byteLength} bytes`);
+      return imageBytes;
+      
+    } catch (error) {
+      console.error(`[PDF Export] Attempt ${attempt} failed:`, error);
+      
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retry (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+    }
+  }
+  
+  throw new Error('All retry attempts failed');
+}
+
 async function addCoverPage(
   pdfDoc: PDFDocument,
   story: any,
@@ -266,22 +311,39 @@ async function addContentPage(
   // Image embedding
   if (pageData.image_url) {
     try {
-      console.log(`[PDF Export] Fetching image from: ${pageData.image_url}`);
+      console.log(`[PDF Export] Processing image for page ${pageData.page_number}: ${pageData.image_url}`);
       
-      // Fetch the image
-      const imageResponse = await fetch(pageData.image_url);
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+      // Validate URL format
+      if (!pageData.image_url.startsWith('http')) {
+        throw new Error(`Invalid image URL format: ${pageData.image_url}`);
       }
       
-      const imageBytes = await imageResponse.arrayBuffer();
+      // Fetch the image with retry logic
+      const imageBytes = await fetchImageWithRetry(pageData.image_url);
       
       // Embed the image based on format
       let image;
-      if (pageData.image_url.toLowerCase().endsWith('.png')) {
+      const url = pageData.image_url.toLowerCase();
+      if (url.includes('.png') || url.includes('png')) {
         image = await pdfDoc.embedPng(imageBytes);
-      } else {
+        console.log(`[PDF Export] PNG image embedded successfully`);
+      } else if (url.includes('.jpg') || url.includes('.jpeg') || url.includes('jpg') || url.includes('jpeg')) {
         image = await pdfDoc.embedJpg(imageBytes);
+        console.log(`[PDF Export] JPG image embedded successfully`);
+      } else {
+        // Try to detect format from content
+        const uint8Array = new Uint8Array(imageBytes);
+        if (uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && uint8Array[2] === 0x4E && uint8Array[3] === 0x47) {
+          // PNG signature
+          image = await pdfDoc.embedPng(imageBytes);
+          console.log(`[PDF Export] PNG image detected and embedded`);
+        } else if (uint8Array[0] === 0xFF && uint8Array[1] === 0xD8) {
+          // JPEG signature
+          image = await pdfDoc.embedJpg(imageBytes);
+          console.log(`[PDF Export] JPEG image detected and embedded`);
+        } else {
+          throw new Error(`Unsupported image format. URL: ${pageData.image_url}`);
+        }
       }
       
       // Calculate dimensions to fit within the page
@@ -310,7 +372,9 @@ async function addContentPage(
       console.log(`[PDF Export] Image embedded successfully`);
       
     } catch (error) {
-      console.error(`[PDF Export] Failed to embed image:`, error);
+      console.error(`[PDF Export] Failed to embed image for page ${pageData.page_number}:`, error);
+      console.error(`[PDF Export] Image URL: ${pageData.image_url}`);
+      console.error(`[PDF Export] Error details:`, error instanceof Error ? error.message : String(error));
       
       // Fallback to placeholder if image fails to load
       const imageHeight = 250;
@@ -326,8 +390,8 @@ async function addContentPage(
         color: rgb(0.95, 0.95, 0.95)
       });
 
-      const placeholderText = "Image unavailable";
-      const placeholderSize = 12;
+      const placeholderText = `Image unavailable (${error instanceof Error ? error.message : 'Unknown error'})`;
+      const placeholderSize = 10;
       const placeholderWidth = bodyFont.widthOfTextAtSize(placeholderText, placeholderSize);
       page.drawText(placeholderText, {
         x: (width - placeholderWidth) / 2,

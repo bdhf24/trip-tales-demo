@@ -79,39 +79,39 @@ export type Database = {
           },
         ]
       }
-      kid_photos: {
+      character_photos: {
         Row: {
           created_at: string
           id: string
           image_url: string
-          kid_id: string
+          character_id: string
           notes: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           image_url: string
-          kid_id: string
+          character_id: string
           notes?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           image_url?: string
-          kid_id?: string
+          character_id?: string
           notes?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "kid_photos_kid_id_fkey"
-            columns: ["kid_id"]
+            foreignKeyName: "character_photos_character_id_fkey"
+            columns: ["character_id"]
             isOneToOne: false
-            referencedRelation: "kids"
+            referencedRelation: "characters"
             referencedColumns: ["id"]
           },
         ]
       }
-      kids: {
+      characters: {
         Row: {
           age: number
           appearance_notes: string | null
@@ -147,7 +147,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "kids_user_id_fkey"
+            foreignKeyName: "characters_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -253,30 +253,30 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          kid_id: string
+          character_id: string
           notes: string | null
           page_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          kid_id: string
+          character_id: string
           notes?: string | null
           page_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          kid_id?: string
+          character_id?: string
           notes?: string | null
           page_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "reference_images_kid_id_fkey"
-            columns: ["kid_id"]
+            foreignKeyName: "reference_images_character_id_fkey"
+            columns: ["character_id"]
             isOneToOne: false
-            referencedRelation: "kids"
+            referencedRelation: "characters"
             referencedColumns: ["id"]
           },
           {
@@ -299,7 +299,7 @@ export type Database = {
           images_generated: number | null
           images_reused: number | null
           interests: string[]
-          kids_json: Json
+          characters_json: Json
           length: number
           month: string
           outline_json: Json
@@ -318,7 +318,7 @@ export type Database = {
           images_generated?: number | null
           images_reused?: number | null
           interests?: string[]
-          kids_json: Json
+          characters_json: Json
           length: number
           month: string
           outline_json: Json

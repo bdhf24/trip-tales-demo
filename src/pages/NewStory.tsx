@@ -75,7 +75,7 @@ const NewStory = () => {
         console.error("Error fetching kids:", error);
         toast({
           title: "Failed to load profiles",
-          description: "Could not load saved kid profiles",
+          description: "Could not load saved character profiles",
           variant: "destructive",
         });
       }
@@ -290,12 +290,12 @@ const NewStory = () => {
                       variant="outline"
                       onClick={() => navigate('/kids')}
                     >
-                      Create Kid Profile
+                      Create Character Profile
                     </Button>
                   </div>
                 ) : (
                   <>
-                    {/* Selected Kids Display */}
+                    {/* Selected Characters Display */}
                     {selectedKidIds.length > 0 && (
                       <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg">
                         {selectedKidIds.map((kidId) => {
@@ -315,7 +315,7 @@ const NewStory = () => {
                       </div>
                     )}
                     
-                    {/* Kid Selection Badges */}
+                    {/* Character Selection Badges */}
                     <div className="flex flex-wrap gap-2">
                       {availableKids.map((kid) => (
                         <Badge
@@ -343,7 +343,7 @@ const NewStory = () => {
 
                 {kidInterests.length > 0 && (
                   <p className="text-sm text-blue-600 dark:text-blue-400">
-                    ✨ Auto-populated from kid profiles: {kidInterests.join(", ")}
+                    ✨ Auto-populated from character profiles: {kidInterests.join(", ")}
                   </p>
                 )}
 

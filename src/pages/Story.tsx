@@ -678,7 +678,7 @@ const Story = () => {
               {isGuidanceOpen && (
                 <div className="mt-4 space-y-4">
                   <div>
-                    <Label className="block mb-1">Select Kids for Guidance</Label>
+                    <Label className="block mb-1">Select Characters for Guidance</Label>
                     <div className="flex flex-wrap gap-2">
                       {availableKids.map(kid => (
                         <Badge
