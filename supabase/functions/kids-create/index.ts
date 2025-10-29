@@ -1,10 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const kidCreateSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  age: z.number().int().min(0).max(18),
+  interests: z.array(z.string().max(50)).max(20).optional(),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,46 +20,67 @@ serve(async (req) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
     );
 
-    const { name, age, userId, interests } = await req.json();
-
-    if (!name || !age) {
+    // Verify user authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return new Response(
-        JSON.stringify({ error: 'Name and age are required' }),
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const input = await req.json();
+
+    // Validate input
+    const validationResult = kidCreateSchema.safeParse(input);
+    if (!validationResult.success) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid input', details: validationResult.error.errors }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create a default user if userId not provided
-    let finalUserId = userId;
-    if (!finalUserId) {
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .insert({ name: 'Default User' })
-        .select()
-        .single();
-      
-      if (userError) throw userError;
-      finalUserId = user.id;
-    }
+    const { name, age, interests } = validationResult.data;
 
+    // Create kid with authenticated user's ID
     const { data: kid, error } = await supabase
       .from('kids')
       .insert({ 
         name, 
         age, 
-        user_id: finalUserId,
+        user_id: user.id,
         descriptor: null,
         interests: interests || []
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error creating kid:', error);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create character profile' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     return new Response(
       JSON.stringify({ kid }),
@@ -60,7 +89,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in kids-create function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'An error occurred processing your request' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -96,7 +96,7 @@ serve(async (req) => {
       const promptParts = [sanitized];
       
       // Extract character names from the prompt to ensure all are included
-      const characterNames = guidance.results?.map(r => r.kidName) || [];
+      const characterNames = guidance.results?.map((r: any) => r.kidName) || [];
       if (characterNames.length > 0) {
         promptParts.push(`\n\nMANDATORY: ALL characters (${characterNames.join(", ")}) MUST appear in this image. Every single character must be clearly visible and present in the scene.`);
       }
@@ -104,7 +104,7 @@ serve(async (req) => {
       // OPTIMIZATION: Build character descriptions in one pass instead of multiple string concatenations
       if (guidance.results && guidance.results.length > 0) {
         const characterDescriptions = guidance.results
-          .map(kidRef => {
+          .map((kidRef: any) => {
             const parts: string[] = [];
             if (kidRef.appearanceNotes) {
               parts.push(`Character appearance notes for ${kidRef.kidName}: ${kidRef.appearanceNotes}`);
@@ -114,7 +114,7 @@ serve(async (req) => {
             }
             return parts.join('. ');
           })
-          .filter(desc => desc.length > 0);
+          .filter((desc: string) => desc.length > 0);
         
         if (characterDescriptions.length > 0) {
           promptParts.push('\n\n' + characterDescriptions.join('\n\n'));
