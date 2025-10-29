@@ -119,12 +119,13 @@ serve(async (req) => {
       artStylePreset = "storybook-cozy" as ArtStylePreset
     } = await req.json();
     
-    // Fetch full kid profile data from database
+    // Fetch full kid profile data from database (OPTIMIZED: only fetch required fields)
     let kidProfiles: KidProfile[] = [];
     let kidInterests: string[] = [];
     
     if (kids && kids.length > 0) {
       try {
+        // OPTIMIZATION: Only select fields we actually use to reduce data transfer
         const { data: kidsData } = await supabase
           .from('kids')
           .select('id, name, age, descriptor, appearance_notes, interests')
@@ -132,8 +133,11 @@ serve(async (req) => {
         
         if (kidsData) {
           kidProfiles = kidsData;
-          kidInterests = kidsData.flatMap(k => k.interests || []);
-          console.log('Fetched kid profiles:', kidProfiles);
+          // OPTIMIZATION: Flatten interests once and filter out nulls/undefined
+          kidInterests = kidsData
+            .flatMap(k => k.interests || [])
+            .filter((interest): interest is string => Boolean(interest));
+          console.log('Fetched kid profiles:', kidProfiles.length, 'profiles');
         }
       } catch (error) {
         console.error('Error fetching kid profiles:', error);
@@ -352,77 +356,13 @@ Return JSON with this structure:
       // The scene should reflect what's actually described in the story text
       const enhancedScene = `${pageArgs.scene}. Based on the story: ${pageArgs.text.substring(0, 200)}...`;
       
-      // Generate interactive elements for this page
+      // Generate interactive elements for this page (OPTIONAL - can be generated later via add-interactive-elements)
+      // Skip during story creation to reduce API costs - interactive elements can be added on-demand
       let interactiveElements = { questions: [], activities: [] };
-      try {
-        const interactiveResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              {
-                role: "system",
-                content: "You are a children's book educator. Generate engaging questions and activities for young children based on story content.",
-              },
-              {
-                role: "user",
-                content: `Generate 2-3 age-appropriate questions and 1-2 simple activities for this story page:
-
-Heading: ${pageArgs.heading}
-Text: ${pageArgs.text}
-
-The questions should be open-ended and encourage discussion. Activities should be simple and fun.`,
-              },
-            ],
-            tools: [{
-              type: "function",
-              function: {
-                name: "generate_interactive_elements",
-                description: "Generate questions and activities for a story page",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    questions: {
-                      type: "array",
-                      items: { type: "string" },
-                      description: "2-3 open-ended questions for children",
-                    },
-                    activities: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          title: { type: "string" },
-                          description: { type: "string" },
-                          materials: { type: "string" },
-                        },
-                        required: ["title", "description"],
-                      },
-                      description: "1-2 simple activities children can do",
-                    },
-                  },
-                  required: ["questions", "activities"],
-                },
-              },
-            }],
-            tool_choice: { type: "function", function: { name: "generate_interactive_elements" } },
-          }),
-        });
-
-        if (interactiveResponse.ok) {
-          const interactiveData = await interactiveResponse.json();
-          const toolCall = interactiveData.choices?.[0]?.message?.tool_calls?.[0];
-          if (toolCall) {
-            interactiveElements = JSON.parse(toolCall.function.arguments);
-          }
-        }
-      } catch (error) {
-        console.error(`Error generating interactive elements for page ${outlineItem.page}:`, error);
-      }
+      
+      // OPTIMIZATION: Interactive elements are now generated only when requested via the separate endpoint
+      // This saves N API calls (where N = number of pages) during story creation
+      // Users can generate interactive elements later if needed via the add-interactive-elements function
       
       // Build structured image prompt spec using enhanced scene that includes story details
       const imagePromptSpec: ImagePromptSpec = {

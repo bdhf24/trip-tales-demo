@@ -92,35 +92,44 @@ serve(async (req) => {
     if (guidance?.enabled && (guidance?.results?.length > 0 || guidance?.storyPageReferences?.length > 0)) {
       console.log(`Using photo guidance with ${guidance.results?.length || 0} kids and ${guidance.storyPageReferences?.length || 0} story page references`);
       
-      // Enhance prompt with appearance notes and descriptors
-      let enhancedPrompt = sanitized;
+      // Enhance prompt with appearance notes and descriptors (OPTIMIZED: use array.join for better performance)
+      const promptParts = [sanitized];
       
       // Extract character names from the prompt to ensure all are included
       const characterNames = guidance.results?.map(r => r.kidName) || [];
-      const allCharactersRequired = characterNames.length > 0 
-        ? `\n\nMANDATORY: ALL characters (${characterNames.join(", ")}) MUST appear in this image. Every single character must be clearly visible and present in the scene.`
-        : "";
+      if (characterNames.length > 0) {
+        promptParts.push(`\n\nMANDATORY: ALL characters (${characterNames.join(", ")}) MUST appear in this image. Every single character must be clearly visible and present in the scene.`);
+      }
       
-      enhancedPrompt += allCharactersRequired;
-      
+      // OPTIMIZATION: Build character descriptions in one pass instead of multiple string concatenations
       if (guidance.results && guidance.results.length > 0) {
-        for (const kidRef of guidance.results) {
-          if (kidRef.appearanceNotes) {
-            enhancedPrompt += `\n\nCharacter appearance notes for ${kidRef.kidName}: ${kidRef.appearanceNotes}`;
-          }
-          if (kidRef.descriptor) {
-            enhancedPrompt += `\n\nCharacter description for ${kidRef.kidName}: ${kidRef.descriptor}`;
-          }
+        const characterDescriptions = guidance.results
+          .map(kidRef => {
+            const parts: string[] = [];
+            if (kidRef.appearanceNotes) {
+              parts.push(`Character appearance notes for ${kidRef.kidName}: ${kidRef.appearanceNotes}`);
+            }
+            if (kidRef.descriptor) {
+              parts.push(`Character description for ${kidRef.kidName}: ${kidRef.descriptor}`);
+            }
+            return parts.join('. ');
+          })
+          .filter(desc => desc.length > 0);
+        
+        if (characterDescriptions.length > 0) {
+          promptParts.push('\n\n' + characterDescriptions.join('\n\n'));
         }
       }
       
       // Add context about story page references for consistency
       if (guidance.storyPageReferences && guidance.storyPageReferences.length > 0) {
-        enhancedPrompt += `\n\nMaintain consistent character appearance with previous story pages. Use previous page images as reference for character facial features while allowing clothing to vary.`;
+        promptParts.push('\n\nMaintain consistent character appearance with previous story pages. Use previous page images as reference for character facial features while allowing clothing to vary.');
       }
       
       // Add story content alignment reminder
-      enhancedPrompt += `\n\nSTORY CONTENT ALIGNMENT: This illustration must visually depict the exact scenes, actions, and details described in the story text. The image should match what is happening in the narrative, including specific activities, settings, and visual elements mentioned in the story.`;
+      promptParts.push('\n\nSTORY CONTENT ALIGNMENT: This illustration must visually depict the exact scenes, actions, and details described in the story text. The image should match what is happening in the narrative, including specific activities, settings, and visual elements mentioned in the story.');
+      
+      const enhancedPrompt = promptParts.join('');
       
       // Build a multi-part message with text + reference images
       const contentParts: any[] = [
