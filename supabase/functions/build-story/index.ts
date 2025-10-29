@@ -27,7 +27,7 @@ const STYLE_DESCRIPTIONS: Record<ArtStylePreset, string> = {
   "travel-sketch": "charming travel sketch style with loose linework, hand-drawn details, spontaneous and lively feel",
 };
 
-function buildImagePrompt(spec: ImagePromptSpec, kidProfiles: KidProfile[]): string {
+function buildImagePrompt(spec: ImagePromptSpec, kidProfiles: KidProfile[], storyText?: string): string {
   const styleDesc = STYLE_DESCRIPTIONS[spec.stylePreset];
   const characters: string[] = [];
   
@@ -52,7 +52,45 @@ function buildImagePrompt(spec: ImagePromptSpec, kidProfiles: KidProfile[]): str
   const landmarkPart = spec.landmarkDetail ? `, featuring ${spec.landmarkDetail}` : "";
   const timePart = spec.timeOfDay ? `, ${spec.timeOfDay} lighting` : "";
   
-  return `${styleDesc}. Scene: ${spec.scene}${landmarkPart}. Characters: ${characterDesc}. Mood: ${spec.mood}${timePart}. ${spec.consistencyTags.join(", ")}. CRITICAL: Use wide-angle framing showing complete characters from head to toe with plenty of space around them, no cropping of bodies, centered composition.`;
+  // CRITICAL: Ensure ALL characters appear in EVERY image
+  const allCharactersRequired = kidProfiles.length > 0 
+    ? `CRITICAL REQUIREMENT: ALL of the following characters MUST be clearly visible and present in this image: ${kidProfiles.map(k => k.name).join(", ")}. Every single character must appear in every scene.`
+    : "";
+  
+  // CRITICAL: Image must match the actual story content
+  const storyAlignment = storyText 
+    ? `CRITICAL: This illustration must EXACTLY match the story text content. The image should visually depict what is described in the story text, including specific actions, settings, objects, and details mentioned. The visual elements must align precisely with the narrative.`
+    : "";
+  
+  // Character consistency requirements
+  const consistencyRequirement = kidProfiles.length > 0
+    ? `CHARACTER CONSISTENCY REQUIREMENTS:
+- Each character's facial features (hair color, hair style, eye color, skin tone, face shape, distinctive features) must remain IDENTICAL across all pages
+- Facial features are LOCKED and cannot change
+- Clothing, accessories, and poses CAN vary based on the scene and story context
+- Maintain exact same facial appearance while allowing clothing to change naturally with the story`
+    : "";
+  
+  return `${styleDesc}. 
+
+${storyAlignment}
+
+Scene Description: ${spec.scene}${landmarkPart}. 
+Characters Present: ${characterDesc}. 
+Mood: ${spec.mood}${timePart}. 
+
+${allCharactersRequired}
+
+${consistencyRequirement}
+
+Technical Requirements: ${spec.consistencyTags.join(", ")}. 
+
+Composition Requirements:
+- Wide-angle framing showing complete characters from head to toe
+- Plenty of space around characters (at least 20% empty space on all sides)
+- No cropping of bodies, heads, or any body parts
+- Centered composition with all characters clearly visible
+- Full environmental context including ground, sky, and background elements`;
 }
 
 const corsHeaders = {
@@ -125,24 +163,28 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: "You are a children's travel storyteller for ages 5–8. Keep sentences short and friendly. On each page, include one kid-friendly activity/place and one light, cheerful historical/cultural nugget. Avoid heavy topics. End every page with a tiny curiosity question. Use kids' names naturally.",
+            content: `You are a children's travel storyteller for ages 5–8. Keep sentences short and friendly. On each page, include one kid-friendly activity/place and one light, cheerful historical/cultural nugget. Avoid heavy topics. End every page with a tiny curiosity question. Use kids' names naturally.
+
+CRITICAL REQUIREMENT: Every single page must include ALL characters (${kidsString}) actively participating in the story. No page should exclude any character.`,
           },
           {
             role: "user",
             content: `Create an outline for a ${pages}-page children's story about ${kidsString} traveling to ${destination} in ${month}. The story should have a ${tone} tone and include these interests: ${interestsString}.
+
+CRITICAL: Every page in the outline must include ALL characters (${kidsString}). Every character must be part of every page's activities and narrative.
 
 Return a JSON array with this structure:
 [
   {
     "page": 1,
     "heading": "Page title",
-    "summary": "Brief summary of what happens on this page"
+    "summary": "Brief summary of what happens on this page (must include all characters: ${kidsString})"
   }
 ]
 
-Page 1 should introduce the kids and why the place is special with one friendly fact.
-Middle pages should each mix an activity with a light cultural/historical fact and sensory details.
-The final page should have a hopeful takeaway and a simple curiosity question.`,
+Page 1 should introduce all the kids (${kidsString}) and why the place is special with one friendly fact.
+Middle pages should each mix an activity involving all characters with a light cultural/historical fact and sensory details. Every page must show all characters participating.
+The final page should have all characters together with a hopeful takeaway and a simple curiosity question.`,
           },
         ],
         tools: [
@@ -223,7 +265,13 @@ The final page should have a hopeful takeaway and a simple curiosity question.`,
           messages: [
             {
               role: "system",
-              content: "You are a children's travel storyteller for ages 5–8. Keep sentences short and friendly. On each page, include one kid-friendly activity/place and one light, cheerful historical/cultural nugget. Avoid heavy topics. End every page with a tiny curiosity question. Use kids' names naturally.",
+              content: `You are a children's travel storyteller for ages 5–8. Keep sentences short and friendly. On each page, include one kid-friendly activity/place and one light, cheerful historical/cultural nugget. Avoid heavy topics. End every page with a tiny curiosity question. Use kids' names naturally.
+
+CRITICAL REQUIREMENTS:
+- EVERY page must include ALL characters (${kidsString}) actively participating in the story
+- The scene description you provide must EXACTLY match what is written in the story text
+- Visual details must align precisely with the narrative content
+- Every character should be mentioned and included in the action`,
             },
             {
               role: "user",
@@ -241,16 +289,20 @@ Context:
 
 Write 100-140 words of friendly, age-appropriate text that brings this page to life. Include sensory details, one cultural/historical nugget, and end with a curiosity question.
 
+IMPORTANT: Make sure ALL kids (${kidsString}) are mentioned and actively participating in the story on this page. Every character should be included in the narrative.
+
 Also identify:
-1. The main scene/setting for this page
+1. The main scene/setting for this page (must match what's described in the story text)
 2. Any specific landmark or place mentioned
-3. Key visual details that would appear in an illustration
+3. Key visual details that would appear in an illustration (these should EXACTLY match what is described in the story text - actions, objects, activities, setting details)
+
+CRITICAL: The scene description must reflect what is actually written in the story text. The visual elements must align precisely with the narrative content.
 
 Return JSON with this structure:
 {
   "heading": "The page heading",
-  "text": "The 100-140 word story text",
-  "scene": "Brief description of the main scene/setting",
+  "text": "The 100-140 word story text (must mention all characters: ${kidsString})",
+  "scene": "Detailed description of the main scene/setting that matches the story text exactly",
   "landmarkDetail": "Specific landmark or place (if any, otherwise null)"
 }`,
             },
@@ -295,6 +347,10 @@ Return JSON with this structure:
 
       const pageData = await pageResponse.json();
       const pageArgs = JSON.parse(pageData.choices[0].message.tool_calls[0].function.arguments);
+      
+      // Build the scene description that incorporates story text details
+      // The scene should reflect what's actually described in the story text
+      const enhancedScene = `${pageArgs.scene}. Based on the story: ${pageArgs.text.substring(0, 200)}...`;
       
       // Generate interactive elements for this page
       let interactiveElements = { questions: [], activities: [] };
@@ -368,10 +424,10 @@ The questions should be open-ended and encourage discussion. Activities should b
         console.error(`Error generating interactive elements for page ${outlineItem.page}:`, error);
       }
       
-      // Build structured image prompt spec
+      // Build structured image prompt spec using enhanced scene that includes story details
       const imagePromptSpec: ImagePromptSpec = {
         stylePreset: artStylePreset,
-        scene: pageArgs.scene,
+        scene: enhancedScene,
         landmarkDetail: pageArgs.landmarkDetail || undefined,
         mood: baseMood,
         timeOfDay: timeOfDay as "morning" | "afternoon" | "golden hour",
@@ -383,8 +439,9 @@ The questions should be open-ended and encourage discussion. Activities should b
         ],
       };
       
-      // Build the final image prompt string using actual kid profiles
-      const imagePrompt = buildImagePrompt(imagePromptSpec, kidProfiles);
+      // Build the final image prompt string using actual kid profiles and story text
+      // Pass the full story text to ensure image matches the narrative content
+      const imagePrompt = buildImagePrompt(imagePromptSpec, kidProfiles, pageArgs.text);
       
       generatedPages.push({
         ...pageArgs,
@@ -423,7 +480,7 @@ The questions should be open-ended and encourage discussion. Activities should b
     // Create title page (page 1)
     const titlePageImageSpec: ImagePromptSpec = {
       stylePreset: artStylePreset,
-      scene: `Book cover showing ${destination} with ${kidsString} standing in front of iconic landmarks`,
+      scene: `Book cover showing ${destination} with ${kidsString} standing together in front of iconic landmarks of ${destination}`,
       landmarkDetail: `iconic landmarks of ${destination}`,
       mood: baseMood,
       timeOfDay: "golden hour",
@@ -436,8 +493,9 @@ The questions should be open-ended and encourage discussion. Activities should b
       ],
     };
 
-    const titlePagePrompt = buildImagePrompt(titlePageImageSpec, kidProfiles);
     const kidsText = kids.length > 1 ? kids.slice(0, -1).join(", ") + " and " + kids[kids.length - 1] : kids[0];
+    const titlePageText = `A Travel Adventure Story featuring ${kidsText} traveling to ${destination} in ${month}`;
+    const titlePagePrompt = buildImagePrompt(titlePageImageSpec, kidProfiles, titlePageText);
 
     await supabase
       .from('pages')

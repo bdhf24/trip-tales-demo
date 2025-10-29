@@ -95,6 +95,14 @@ serve(async (req) => {
       // Enhance prompt with appearance notes and descriptors
       let enhancedPrompt = sanitized;
       
+      // Extract character names from the prompt to ensure all are included
+      const characterNames = guidance.results?.map(r => r.kidName) || [];
+      const allCharactersRequired = characterNames.length > 0 
+        ? `\n\nMANDATORY: ALL characters (${characterNames.join(", ")}) MUST appear in this image. Every single character must be clearly visible and present in the scene.`
+        : "";
+      
+      enhancedPrompt += allCharactersRequired;
+      
       if (guidance.results && guidance.results.length > 0) {
         for (const kidRef of guidance.results) {
           if (kidRef.appearanceNotes) {
@@ -108,8 +116,11 @@ serve(async (req) => {
       
       // Add context about story page references for consistency
       if (guidance.storyPageReferences && guidance.storyPageReferences.length > 0) {
-        enhancedPrompt += `\n\nMaintain consistent character appearance with previous story pages.`;
+        enhancedPrompt += `\n\nMaintain consistent character appearance with previous story pages. Use previous page images as reference for character facial features while allowing clothing to vary.`;
       }
+      
+      // Add story content alignment reminder
+      enhancedPrompt += `\n\nSTORY CONTENT ALIGNMENT: This illustration must visually depict the exact scenes, actions, and details described in the story text. The image should match what is happening in the narrative, including specific activities, settings, and visual elements mentioned in the story.`;
       
       // Build a multi-part message with text + reference images
       const contentParts: any[] = [
@@ -122,6 +133,23 @@ CRITICAL CHARACTER CONSISTENCY REQUIREMENTS:
 - Match PRECISELY: hair color, hair style, facial features, eye color, skin tone, face shape, and body type from the references
 - Each character MUST look identical to their reference photos in every scene
 - Character appearance strength: ${guidance.strength || 0.45}
+
+MANDATORY CHARACTER PRESENCE:
+- ALL characters mentioned in the story MUST appear in this illustration
+- Every character must be clearly visible, not hidden or in the background
+- If multiple characters are part of the story, ALL of them must be present and visible in this image
+- Do not exclude any character from any scene
+
+FACIAL FEATURES LOCKED (DO NOT CHANGE):
+- Hair color, hair style, eye color, skin tone, face shape - these MUST remain IDENTICAL to reference photos
+- Distinctive facial features (freckles, glasses, etc.) must be consistent across all pages
+- Facial features are PERMANENT and cannot change between pages
+
+CLOTHING AND POSES CAN VARY:
+- Clothing, accessories, and poses may change naturally based on the scene and story context
+- Characters can wear different outfits appropriate to the setting and activities
+- Poses can vary (standing, sitting, running, etc.) to match the story action
+- While appearance changes, facial features remain locked
 
 CRITICAL FRAMING AND COMPOSITION RULES - FOLLOW EXACTLY:
 - WIDE SHOT REQUIRED: Use a wide camera angle that shows the full scene with plenty of space around characters
