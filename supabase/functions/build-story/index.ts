@@ -392,8 +392,29 @@ Return JSON with this structure:
       });
     }
 
-    // Create story in database
-    const storyTitle = outline[0]?.heading || `${kids.join(" and ")}'s Adventure in ${destination}`;
+    // Create better title focusing on younger characters (<15) and location
+    // Filter for younger characters for title
+    const youngerKids = kidProfiles.filter(k => k.age < 15);
+    const youngerKidsNames = youngerKids.length > 0 
+      ? youngerKids.map(k => k.name)
+      : kids; // Fallback to all kids if none are under 15
+    
+    // Generate a better title
+    let storyTitle: string;
+    if (youngerKidsNames.length > 0) {
+      if (youngerKidsNames.length === 1) {
+        storyTitle = `${youngerKidsNames[0]}'s Adventure in ${destination}`;
+      } else if (youngerKidsNames.length === 2) {
+        storyTitle = `${youngerKidsNames[0]} and ${youngerKidsNames[1]}'s Adventure in ${destination}`;
+      } else {
+        const lastKid = youngerKidsNames[youngerKidsNames.length - 1];
+        const otherKids = youngerKidsNames.slice(0, -1).join(", ");
+        storyTitle = `${otherKids}, and ${lastKid}'s Adventure in ${destination}`;
+      }
+    } else {
+      // Fallback if no younger kids
+      storyTitle = outline[0]?.heading || `Adventure in ${destination}`;
+    }
     const { data: storyRecord, error: storyError } = await supabase
       .from('stories')
       .insert({

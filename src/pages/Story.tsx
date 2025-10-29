@@ -86,11 +86,16 @@ const Story = () => {
   const [imageSize, setImageSize] = useState("1024x1024");
   const [imageFormat, setImageFormat] = useState("png");
   const [previewMode, setPreviewMode] = useState(true);
-  const [guidanceSettings, setGuidanceSettings] = useState<GuidanceSettings>({
-    enabled: false,
-    kidIds: [],
-    strength: 0.45,
-    downscale: 768,
+  // Load photo guidance settings from localStorage with defaults
+  const [guidanceSettings, setGuidanceSettings] = useState<GuidanceSettings>(() => {
+    const enabled = localStorage.getItem('photoGuidanceEnabled');
+    const strength = localStorage.getItem('photoGuidanceStrength');
+    return {
+      enabled: enabled !== null ? JSON.parse(enabled) : true, // Default to enabled
+      kidIds: [],
+      strength: strength !== null ? parseFloat(strength) : 0.50, // Default to 50%
+      downscale: 768,
+    };
   });
   const [availableKids, setAvailableKids] = useState<Kid[]>([]);
   const [isGuidanceOpen, setIsGuidanceOpen] = useState(false);
@@ -585,21 +590,10 @@ const Story = () => {
                 </p>
               </div>
               
-              <div className="flex flex-wrap gap-3">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="preview-mode"
-                    checked={previewMode}
-                    onCheckedChange={(checked) => setPreviewMode(checked as boolean)}
-                    disabled={isGenerating}
-                  />
-                  <Label htmlFor="preview-mode" className="text-sm font-medium cursor-pointer">
-                    Preview Mode (512x512, faster & cheaper)
-                  </Label>
-                </div>
-              </div>
-
-              {!previewMode && (
+              {/* Preview mode is always enabled by default - option removed per requirements */}
+              {/* Preview mode checkbox removed - previews are always generated first */}
+              
+              {false && (
                 <div className="flex flex-col sm:flex-row gap-3">
                   <select
                     value={imageSize}
@@ -640,23 +634,35 @@ const Story = () => {
                   )}
                 </Button>
 
-                {story.generatedPages.some(p => p.previewImageUrl && !p.isHighRes) && (
-                  <Button
-                    onClick={() => upgradeToHighRes()}
-                    disabled={upgradingPages.size > 0}
-                    size="lg"
-                    variant="secondary"
-                  >
-                    {upgradingPages.size > 0 ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Upgrading...
-                      </>
-                    ) : (
-                      "Upgrade All to High-Res"
-                    )}
-                  </Button>
-                )}
+                {(() => {
+                  const pagesToUpgrade = story.generatedPages
+                    .map((p, idx) => idx)
+                    .filter(idx => story.generatedPages[idx].previewImageUrl && !story.generatedPages[idx].isHighRes);
+                  const upgradeCount = pagesToUpgrade.length;
+                  const estimatedCost = upgradeCount * 0.04; // $0.04 per image
+                  
+                  return upgradeCount > 0 && (
+                    <Button
+                      onClick={() => upgradeToHighRes(pagesToUpgrade)}
+                      disabled={upgradingPages.size > 0}
+                      size="lg"
+                      variant="secondary"
+                      title={`Upgrade ${upgradeCount} image${upgradeCount > 1 ? 's' : ''} to high resolution (~$${estimatedCost.toFixed(2)})`}
+                    >
+                      {upgradingPages.size > 0 ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Upgrading...
+                        </>
+                      ) : (
+                        <>
+                          Upgrade All to High-Res
+                          <span className="ml-2 text-xs">(~${estimatedCost.toFixed(2)})</span>
+                        </>
+                      )}
+                    </Button>
+                  );
+                })()}
               </div>
             </div>
 
@@ -728,79 +734,6 @@ const Story = () => {
             </div>
           </div>
 
-          {/* Cost Breakdown and PDF Export sections */}
-          {costStats && (
-            <div className="mb-8 p-6 bg-card rounded-xl border">
-              <h3 className="font-semibold text-lg mb-4">Cost Breakdown</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Images Generated: {costStats.imagesGenerated}</li>
-                <li>Images Reused: {costStats.imagesReused}</li>
-                <li>Estimated Cost: ${costStats.estimatedCost.toFixed(2)}</li>
-                <li>Cost Saved: ${costStats.costSaved.toFixed(2)}</li>
-              </ul>
-              <div className="mt-4 flex gap-3">
-                <Button
-                  onClick={async () => {
-                    if (!id) return;
-                    setIsExportingPdf(true);
-                    try {
-                      const { data, error } = await supabase.functions.invoke("export-pdf", {
-                        body: { storyId: id },
-                      });
-                      if (error) throw error;
-                      setPdfUrl(data.pdfUrl);
-                      setPdfFileSize(data.fileSize);
-                      
-                      // Fetch PDF as blob to avoid cross-origin download issues
-                      const response = await fetch(data.pdfUrl);
-                      const blob = await response.blob();
-                      
-                      // Create object URL and trigger download
-                      const blobUrl = URL.createObjectURL(blob);
-                      const link = document.createElement('a');
-                      link.href = blobUrl;
-                      link.download = `${story?.title || 'story'}.pdf`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      
-                      // Clean up object URL
-                      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
-                      
-                      toast({ title: "PDF Downloaded", description: "Your PDF has been saved to Downloads." });
-                    } catch (error) {
-                      console.error("Error exporting PDF:", error);
-                      toast({ title: "Error", description: "Failed to export PDF", variant: "destructive" });
-                    } finally {
-                      setIsExportingPdf(false);
-                    }
-                  }}
-                  disabled={isExportingPdf}
-                  size="lg"
-                >
-                  {isExportingPdf ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Exporting PDF...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Export PDF
-                    </>
-                  )}
-                </Button>
-                {pdfUrl && (
-                  <Button asChild variant="outline" size="lg">
-                    <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                      <Download className="mr-2 h-4 w-4" />
-                      Download PDF ({pdfFileSize ? `${(pdfFileSize / 1024).toFixed(1)} KB` : "?"})
-                    </a>
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* Story Page Card */}
           <div className="bg-card rounded-3xl shadow-2xl p-6 md:p-10 mb-8 border-4 border-primary/20">
@@ -920,13 +853,14 @@ const Story = () => {
                         {page.isHighRes ? "High-Res" : "Preview"}
                       </Badge>
 
-                      {/* Upgrade Button for individual page */}
+                      {/* Upgrade Button for individual page with cost estimate */}
                       {hasPreviewOnly && (
                         <Button
                           size="sm"
                           onClick={() => upgradeToHighRes([currentPage])}
                           disabled={upgradingPages.has(currentPage)}
                           className="absolute bottom-4 right-4"
+                          title="Upgrade this image to high resolution (~$0.04)"
                         >
                           {upgradingPages.has(currentPage) ? (
                             <>
@@ -936,7 +870,7 @@ const Story = () => {
                           ) : (
                             <>
                               <Sparkles className="h-3 w-3 mr-1" />
-                              Upgrade to High-Res
+                              Upgrade (~$0.04)
                             </>
                           )}
                         </Button>
@@ -1046,6 +980,103 @@ const Story = () => {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cost Breakdown and PDF Export - Moved here under activities */}
+                {costStats && (
+                  <div className="bg-card rounded-2xl shadow-xl p-6 md:p-8 border-2 border-purple-200 dark:border-purple-800 mt-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <FileText className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                      <h3 className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                        Story Actions & Costs
+                      </h3>
+                    </div>
+                    
+                    <div className="mb-6 space-y-2 text-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Images Generated:</span>
+                        <span className="font-semibold">{costStats.imagesGenerated}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Images Reused:</span>
+                        <span className="font-semibold text-green-600">{costStats.imagesReused}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t">
+                        <span className="text-muted-foreground">Estimated Cost:</span>
+                        <span className="font-semibold text-primary">${costStats.estimatedCost.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Cost Saved:</span>
+                        <span className="font-semibold text-green-600">${costStats.costSaved.toFixed(2)}</span>
+                      </div>
+                      <div className="pt-2 border-t text-xs text-muted-foreground">
+                        High-resolution upgrade: ~$0.04 per image
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={async () => {
+                          if (!id) return;
+                          setIsExportingPdf(true);
+                          try {
+                            const { data, error } = await supabase.functions.invoke("export-pdf", {
+                              body: { storyId: id },
+                            });
+                            if (error) throw error;
+                            setPdfUrl(data.pdfUrl);
+                            setPdfFileSize(data.fileSize);
+                            
+                            // Fetch PDF as blob to avoid cross-origin download issues
+                            const response = await fetch(data.pdfUrl);
+                            const blob = await response.blob();
+                            
+                            // Create object URL and trigger download
+                            const blobUrl = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.download = `${story?.title || 'story'}.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            
+                            // Clean up object URL
+                            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+                            
+                            toast({ title: "PDF Downloaded", description: "Your PDF has been saved to Downloads." });
+                          } catch (error) {
+                            console.error("Error exporting PDF:", error);
+                            toast({ title: "Error", description: "Failed to export PDF", variant: "destructive" });
+                          } finally {
+                            setIsExportingPdf(false);
+                          }
+                        }}
+                        disabled={isExportingPdf}
+                        size="lg"
+                        className="flex-1"
+                      >
+                        {isExportingPdf ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Exporting PDF...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Export PDF
+                          </>
+                        )}
+                      </Button>
+                      {pdfUrl && (
+                        <Button asChild variant="outline" size="lg">
+                          <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                            <Download className="mr-2 h-4 w-4" />
+                            View PDF
+                          </a>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}

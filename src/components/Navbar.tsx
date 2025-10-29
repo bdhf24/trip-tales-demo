@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plane, Library, Users } from "lucide-react";
+import { Plane, Library, Users, Settings as SettingsIcon } from "lucide-react";
 
 const Navbar = () => {
   return (
@@ -27,6 +27,12 @@ const Navbar = () => {
               <Button variant="ghost" size="sm" className="gap-2">
                 <Users className="h-4 w-4" />
                 Characters
+              </Button>
+            </Link>
+            <Link to="/settings">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <SettingsIcon className="h-4 w-4" />
+                Settings
               </Button>
             </Link>
             <Link to="/new">

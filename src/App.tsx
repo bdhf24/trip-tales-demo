@@ -10,6 +10,7 @@ import Story from "./pages/Story";
 import Library from "./pages/Library";
 import LibraryManager from "./pages/LibraryManager";
 import Kids from "./pages/Kids";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/library" element={<Library />} />
           <Route path="/library/manage" element={<LibraryManager />} />
           <Route path="/kids" element={<Kids />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/story/demo" element={<StoryDemo />} />
           <Route path="/story/:id" element={<Story />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
