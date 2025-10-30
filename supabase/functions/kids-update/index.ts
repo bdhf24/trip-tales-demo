@@ -12,7 +12,7 @@ const kidUpdateSchema = z.object({
   kidId: z.string().uuid(),
   name: z.string().trim().min(1).max(100).optional(),
   age: z.number().int().min(0).max(120).optional(),
-  descriptor: z.string().max(500).optional(),
+  descriptor: z.string().max(2000).optional(),
   interests: z.array(z.string().max(50)).max(20).optional(),
 });
 
