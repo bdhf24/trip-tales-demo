@@ -7,6 +7,7 @@ type KidProfile = {
   id: string;
   name: string;
   age: number;
+  gender: 'male' | 'female' | 'non-binary' | null;
   descriptor: string | null;
   appearance_notes: string | null;
   interests: string[];
@@ -33,7 +34,8 @@ function buildImagePrompt(spec: ImagePromptSpec, kidProfiles: KidProfile[], stor
   
   // Build character descriptions from actual kid profile data
   kidProfiles.forEach(kid => {
-    const parts = [kid.name, `${kid.age} years old`];
+    const genderDesc = kid.gender === 'male' ? 'boy' : kid.gender === 'female' ? 'girl' : 'child';
+    const parts = [kid.name, `${kid.age} year old ${genderDesc}`];
     
     // Add descriptor if available (e.g., "curly-haired blonde girl")
     if (kid.descriptor) {
@@ -151,7 +153,7 @@ serve(async (req) => {
         // OPTIMIZATION: Only select fields we actually use to reduce data transfer
         const { data: kidsData } = await supabase
           .from('kids')
-          .select('id, name, age, descriptor, appearance_notes, interests')
+          .select('id, name, age, gender, descriptor, appearance_notes, interests')
           .in('name', kids);
         
         if (kidsData) {

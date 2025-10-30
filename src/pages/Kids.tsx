@@ -15,6 +15,7 @@ interface Kid {
   id: string;
   name: string;
   age: number;
+  gender: 'male' | 'female' | 'non-binary' | null;
   descriptor: string | null;
   appearance_notes: string | null;
   interests: string[];
@@ -53,6 +54,7 @@ const Kids = () => {
   const [references, setReferences] = useState<ReferenceImage[]>([]);
   const [newKidName, setNewKidName] = useState('');
   const [newKidAge, setNewKidAge] = useState('');
+  const [newKidGender, setNewKidGender] = useState<'male' | 'female' | 'non-binary'>('male');
   const [editingDescriptor, setEditingDescriptor] = useState('');
   const [editingAppearanceNotes, setEditingAppearanceNotes] = useState('');
   const [editingInterests, setEditingInterests] = useState<string[]>([]);
@@ -87,7 +89,11 @@ const Kids = () => {
     setIsCreating(true);
     try {
       const { data, error } = await supabase.functions.invoke('kids-create', {
-        body: { name: newKidName, age: parseInt(newKidAge) }
+        body: { 
+          name: newKidName, 
+          age: parseInt(newKidAge),
+          gender: newKidGender 
+        }
       });
 
       if (error) throw error;
@@ -95,6 +101,7 @@ const Kids = () => {
       toast.success(`${newKidName}'s profile created!`);
       setNewKidName('');
       setNewKidAge('');
+      setNewKidGender('male');
       setShowCreateDialog(false);
       fetchKids();
     } catch (error) {
@@ -325,6 +332,19 @@ const Kids = () => {
                     placeholder="Enter age"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="gender">Gender</Label>
+                  <select
+                    id="gender"
+                    value={newKidGender}
+                    onChange={(e) => setNewKidGender(e.target.value as 'male' | 'female' | 'non-binary')}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="male">Boy</option>
+                    <option value="female">Girl</option>
+                    <option value="non-binary">Non-binary</option>
+                  </select>
+                </div>
                 <Button onClick={createKid} disabled={isCreating} className="w-full">
                   {isCreating ? 'Creating...' : 'Create Profile'}
                 </Button>
@@ -348,7 +368,9 @@ const Kids = () => {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-xl font-semibold">{kid.name}</h3>
-                    <p className="text-sm text-muted-foreground">Age {kid.age}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Age {kid.age} • {kid.gender === 'male' ? 'Boy' : kid.gender === 'female' ? 'Girl' : 'Non-binary'}
+                    </p>
                   </div>
                   <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
                     {kid.photoCount} {kid.photoCount === 1 ? 'photo' : 'photos'}

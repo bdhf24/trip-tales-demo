@@ -11,6 +11,7 @@ const corsHeaders = {
 const kidCreateSchema = z.object({
   name: z.string().trim().min(1).max(100),
   age: z.number().int().min(0).max(120),
+  gender: z.enum(['male', 'female', 'non-binary']),
   interests: z.array(z.string().max(50)).max(20).optional(),
 });
 
@@ -59,14 +60,15 @@ serve(async (req) => {
       );
     }
 
-    const { name, age, interests } = validationResult.data;
+    const { name, age, gender, interests } = validationResult.data;
 
     // Create kid with authenticated user's ID
     const { data: kid, error } = await supabase
       .from('kids')
       .insert({ 
         name, 
-        age, 
+        age,
+        gender,
         user_id: user.id,
         descriptor: null,
         interests: interests || []

@@ -60,7 +60,10 @@ serve(async (req) => {
       id: kid.id,
       name: kid.name,
       age: kid.age,
+      gender: kid.gender,
       descriptor: kid.descriptor,
+      interests: kid.interests,
+      appearance_notes: kid.appearance_notes,
       photoCount: kid.kid_photos[0]?.count || 0,
       createdAt: kid.created_at
     }));

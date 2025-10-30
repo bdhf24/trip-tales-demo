@@ -117,6 +117,7 @@ export type Database = {
           appearance_notes: string | null
           created_at: string
           descriptor: string | null
+          gender: Database["public"]["Enums"]["gender"] | null
           id: string
           interests: string[] | null
           name: string
@@ -128,6 +129,7 @@ export type Database = {
           appearance_notes?: string | null
           created_at?: string
           descriptor?: string | null
+          gender?: Database["public"]["Enums"]["gender"] | null
           id?: string
           interests?: string[] | null
           name: string
@@ -139,6 +141,7 @@ export type Database = {
           appearance_notes?: string | null
           created_at?: string
           descriptor?: string | null
+          gender?: Database["public"]["Enums"]["gender"] | null
           id?: string
           interests?: string[] | null
           name?: string
@@ -385,7 +388,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      gender: "male" | "female" | "non-binary"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -512,6 +515,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      gender: ["male", "female", "non-binary"],
+    },
   },
 } as const
