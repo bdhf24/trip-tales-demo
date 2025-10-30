@@ -73,6 +73,17 @@ serve(async (req) => {
       );
     }
 
+    // Generate signed URLs for the photos so the AI can access them
+    const photoUrls = await Promise.all(
+      photos.map(async (photo) => {
+        const path = photo.image_url.split('/').pop(); // Extract the file path
+        const { data: signedUrlData } = await supabase.storage
+          .from('kid-photos')
+          .createSignedUrl(path, 3600); // 1 hour expiry
+        return signedUrlData?.signedUrl || photo.image_url;
+      })
+    );
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       // Fallback: return a template descriptor
@@ -113,9 +124,9 @@ Start with "${kid.name}, age ${kid.age}:" then provide 50-80 words of SPECIFIC, 
         type: "text",
         text: `Describe ${kid.name}, age ${kid.age}, based on these photos:`
       },
-      ...photos.slice(0, 3).map(photo => ({
+      ...photoUrls.map(url => ({
         type: "image_url",
-        image_url: { url: photo.image_url }
+        image_url: { url }
       }))
     ];
 
