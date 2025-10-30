@@ -94,8 +94,31 @@ serve(async (req) => {
       );
     }
 
+    // Generate signed URLs for the photos so they can be accessed from the private bucket
+    const photosWithSignedUrls = await Promise.all(
+      (photos || []).map(async (photo) => {
+        // Extract the path after /kid-photos/ from the URL
+        const urlParts = photo.image_url.split('/kid-photos/');
+        const path = urlParts.length > 1 ? urlParts[1] : photo.image_url;
+        
+        const { data: signedUrlData, error: signedError } = await supabase.storage
+          .from('kid-photos')
+          .createSignedUrl(path, 3600); // 1 hour expiry
+        
+        if (signedError) {
+          console.error('Error generating signed URL:', signedError);
+          return photo; // Return original if signing fails
+        }
+        
+        return {
+          ...photo,
+          image_url: signedUrlData?.signedUrl || photo.image_url
+        };
+      })
+    );
+
     return new Response(
-      JSON.stringify({ kid, photos: photos || [] }),
+      JSON.stringify({ kid, photos: photosWithSignedUrls }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
