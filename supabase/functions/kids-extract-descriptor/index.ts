@@ -76,10 +76,20 @@ serve(async (req) => {
     // Generate signed URLs for the photos so the AI can access them
     const photoUrls = await Promise.all(
       photos.map(async (photo) => {
-        const path = photo.image_url.split('/').pop(); // Extract the file path
-        const { data: signedUrlData } = await supabase.storage
+        // Extract the path after /kid-photos/ from the URL
+        const urlParts = photo.image_url.split('/kid-photos/');
+        const path = urlParts.length > 1 ? urlParts[1] : photo.image_url;
+        
+        console.log('Generating signed URL for path:', path);
+        const { data: signedUrlData, error: signedError } = await supabase.storage
           .from('kid-photos')
           .createSignedUrl(path, 3600); // 1 hour expiry
+        
+        if (signedError) {
+          console.error('Error generating signed URL:', signedError);
+          return photo.image_url;
+        }
+        
         return signedUrlData?.signedUrl || photo.image_url;
       })
     );
