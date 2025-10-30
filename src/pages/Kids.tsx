@@ -49,12 +49,16 @@ interface ReferenceImage {
 
 const Kids = () => {
   const [kids, setKids] = useState<Kid[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedKid, setSelectedKid] = useState<Kid | null>(null);
   const [photos, setPhotos] = useState<KidPhoto[]>([]);
   const [references, setReferences] = useState<ReferenceImage[]>([]);
   const [newKidName, setNewKidName] = useState('');
   const [newKidAge, setNewKidAge] = useState('');
   const [newKidGender, setNewKidGender] = useState<'male' | 'female' | 'non-binary'>('male');
+  const [editingName, setEditingName] = useState('');
+  const [editingAge, setEditingAge] = useState('');
+  const [editingGender, setEditingGender] = useState<'male' | 'female' | 'non-binary'>('male');
   const [editingDescriptor, setEditingDescriptor] = useState('');
   const [editingAppearanceNotes, setEditingAppearanceNotes] = useState('');
   const [editingInterests, setEditingInterests] = useState<string[]>([]);
@@ -70,6 +74,7 @@ const Kids = () => {
   }, []);
 
   const fetchKids = async () => {
+    setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('kids-list');
       if (error) throw error;
@@ -77,6 +82,8 @@ const Kids = () => {
     } catch (error) {
       console.error('Error fetching kids:', error);
       toast.error('Failed to load kids profiles');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -114,6 +121,9 @@ const Kids = () => {
 
   const openKidDetails = async (kid: Kid) => {
     setSelectedKid(kid);
+    setEditingName(kid.name);
+    setEditingAge(kid.age.toString());
+    setEditingGender(kid.gender || 'male');
     setEditingDescriptor(kid.descriptor || '');
     setEditingAppearanceNotes(kid.appearance_notes || '');
     setEditingInterests(kid.interests || []);
@@ -211,13 +221,19 @@ const Kids = () => {
     }
   };
 
-  const updateDescriptor = async () => {
-    if (!selectedKid) return;
+  const updateProfile = async () => {
+    if (!selectedKid || !editingName || !editingAge) {
+      toast.error('Name and age are required');
+      return;
+    }
 
     try {
       const { error } = await supabase.functions.invoke('kids-update', {
         body: { 
-          kidId: selectedKid.id, 
+          kidId: selectedKid.id,
+          name: editingName,
+          age: parseInt(editingAge),
+          gender: editingGender,
           descriptor: editingDescriptor,
           appearance_notes: editingAppearanceNotes,
           interests: editingInterests
@@ -353,7 +369,14 @@ const Kids = () => {
           </Dialog>
         </div>
 
-        {kids.length === 0 ? (
+        {isLoading ? (
+          <Card className="p-12 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">Loading character profiles...</p>
+            </div>
+          </Card>
+        ) : kids.length === 0 ? (
           <Card className="p-12 text-center">
             <User className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-2xl font-semibold mb-2">No character profiles yet</h2>
@@ -402,10 +425,49 @@ const Kids = () => {
             {selectedKid && (
               <>
                 <DialogHeader>
-                  <DialogTitle>{selectedKid.name}'s Profile</DialogTitle>
+                  <DialogTitle>Edit Profile</DialogTitle>
                 </DialogHeader>
                 
                 <div className="space-y-6">
+                  {/* Basic Info Section */}
+                  <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                    <h3 className="font-semibold">Basic Information</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="edit-name">Name</Label>
+                        <Input
+                          id="edit-name"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          placeholder="Character name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-age">Age</Label>
+                        <Input
+                          id="edit-age"
+                          type="number"
+                          value={editingAge}
+                          onChange={(e) => setEditingAge(e.target.value)}
+                          placeholder="Age"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-gender">Gender</Label>
+                      <select
+                        id="edit-gender"
+                        value={editingGender}
+                        onChange={(e) => setEditingGender(e.target.value as 'male' | 'female' | 'non-binary')}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="male">Boy</option>
+                        <option value="female">Girl</option>
+                        <option value="non-binary">Non-binary</option>
+                      </select>
+                    </div>
+                  </div>
+
                   {/* Photos Section */}
                   <div>
                     <div className="flex justify-between items-center mb-3">
@@ -467,7 +529,6 @@ const Kids = () => {
                         <RefreshCw className="w-4 h-4 mr-2" />
                         {isExtracting ? 'Extracting...' : 'Extract from Photos'}
                       </Button>
-                      <Button size="sm" onClick={updateDescriptor}>Save</Button>
                     </div>
                   </div>
 
@@ -498,7 +559,10 @@ const Kids = () => {
                     <Textarea id="appearance" value={editingAppearanceNotes} onChange={(e) => setEditingAppearanceNotes(e.target.value)} placeholder="Additional details..." className="h-20" />
                   </div>
 
-                  <Button variant="destructive" onClick={() => deleteKid(selectedKid.id, selectedKid.name)} className="w-full">Delete Profile</Button>
+                  <div className="flex gap-2">
+                    <Button onClick={updateProfile} className="flex-1">Save Changes</Button>
+                    <Button variant="destructive" onClick={() => deleteKid(selectedKid.id, selectedKid.name)}>Delete Profile</Button>
+                  </div>
                 </div>
               </>
             )}
