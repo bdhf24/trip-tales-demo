@@ -400,14 +400,15 @@ const Kids = () => {
                         onChange={uploadPhoto}
                       />
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                       {photos.map((photo) => (
-                        <img
-                          key={photo.id}
-                          src={photo.image_url}
-                          alt="Kid photo"
-                          className="w-full h-32 object-cover rounded"
-                        />
+                        <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                          <img
+                            src={photo.image_url}
+                            alt="Kid photo"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
                       ))}
                     </div>
                   </div>
