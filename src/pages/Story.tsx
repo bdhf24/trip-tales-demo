@@ -120,6 +120,17 @@ const Story = () => {
 
     const loadStory = async () => {
       try {
+        // First try to load from localStorage for immediate display
+        const cachedStory = localStorage.getItem(`story-${id}`);
+        if (cachedStory) {
+          try {
+            setStory(JSON.parse(cachedStory));
+          } catch (e) {
+            console.error("Failed to parse cached story", e);
+          }
+        }
+
+        // Then fetch fresh data from database
         const { data, error } = await supabase.functions.invoke('stories-get', {
           body: { storyId: id }
         });
@@ -152,7 +163,24 @@ const Story = () => {
           }))
         };
 
+        // Merge with cached data to preserve any locally stored image URLs
+        if (cachedStory) {
+          try {
+            const cached = JSON.parse(cachedStory);
+            // Keep preview/high-res images from cache if database doesn't have them
+            loadedStory.generatedPages = loadedStory.generatedPages.map((page, idx) => ({
+              ...page,
+              previewImageUrl: page.previewImageUrl || cached.generatedPages[idx]?.previewImageUrl,
+              imageUrl: page.imageUrl || cached.generatedPages[idx]?.imageUrl,
+              isHighRes: page.isHighRes || cached.generatedPages[idx]?.isHighRes,
+            }));
+          } catch (e) {
+            console.error("Failed to merge cached data", e);
+          }
+        }
+
         setStory(loadedStory);
+        localStorage.setItem(`story-${id}`, JSON.stringify(loadedStory));
         
         // Load cost stats if available
         if (data.story.images_generated !== undefined) {
@@ -749,6 +777,10 @@ const Story = () => {
                         src={displayImageUrl}
                         alt={page.heading}
                         className="w-full h-full object-cover rounded-xl"
+                        onError={(e) => {
+                          console.error("Image failed to load:", displayImageUrl);
+                          e.currentTarget.style.display = 'none';
+                        }}
                       />
                       
                       {/* Resolution Badge */}
@@ -839,10 +871,14 @@ const Story = () => {
                 <div className="relative w-full aspect-video bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 rounded-2xl mb-6 flex items-center justify-center overflow-hidden">
                   {displayImageUrl ? (
                     <>
-                      <img
+                       <img
                         src={displayImageUrl}
                         alt={page.heading}
                         className="w-full h-full object-cover rounded-xl"
+                        onError={(e) => {
+                          console.error("Image failed to load:", displayImageUrl);
+                          e.currentTarget.style.display = 'none';
+                        }}
                       />
                       
                       {/* Resolution Badge */}
