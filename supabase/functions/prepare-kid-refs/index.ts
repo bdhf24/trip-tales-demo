@@ -1,10 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const kidRefsSchema = z.object({
+  kidIds: z.array(z.string().uuid()).min(1, { message: 'At least one kid ID is required' }),
+  refStrategy: z.string().optional(),
+  selectedPhotoIds: z.array(z.string().uuid()).optional(),
+  maxRef: z.number().int().min(1).max(10).optional(),
+  downscale: z.number().int().min(256).max(2048).optional(),
+  sendOriginals: z.boolean().optional()
+});
 
 // Simple image downscaling using canvas-like approach
 async function downscaleImage(imageUrl: string, targetSize: number): Promise<string> {
@@ -29,10 +39,43 @@ serve(async (req) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
+
+    // Verify user authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const requestBody = await req.json();
+    
+    // Validate input
+    const validation = kidRefsSchema.safeParse(requestBody);
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validation.error.issues 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { 
       kidIds, 
@@ -41,14 +84,7 @@ serve(async (req) => {
       maxRef = 3,
       downscale = 768,
       sendOriginals = false
-    } = await req.json();
-
-    if (!kidIds || !Array.isArray(kidIds) || kidIds.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'kidIds array is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    } = validation.data;
 
     const results = [];
 

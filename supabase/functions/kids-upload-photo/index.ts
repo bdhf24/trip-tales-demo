@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,18 +13,49 @@ serve(async (req) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use ANON_KEY to respect RLS policies
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
+
+    // Verify user authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const formData = await req.formData();
     const kidId = formData.get('kidId') as string;
     const file = formData.get('file') as File;
 
+    // Validate inputs
     if (!kidId || !file) {
       return new Response(
         JSON.stringify({ error: 'kidId and file are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate kidId format (UUID)
+    const uuidSchema = z.string().uuid();
+    const kidIdValidation = uuidSchema.safeParse(kidId);
+    if (!kidIdValidation.success) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid kid ID format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -43,6 +75,27 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'File size must be less than 5MB' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify user owns the kid (RLS will handle this, but explicit check for better error message)
+    const { data: kid, error: kidError } = await supabase
+      .from('kids')
+      .select('user_id')
+      .eq('id', kidId)
+      .single();
+
+    if (kidError || !kid) {
+      return new Response(
+        JSON.stringify({ error: 'Kid profile not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (kid.user_id !== user.id) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: You do not own this kid profile' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
