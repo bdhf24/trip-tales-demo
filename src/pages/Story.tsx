@@ -597,7 +597,19 @@ const Story = () => {
                 </p>
               </div>
               <Button
-                onClick={() => navigate('/new')}
+                onClick={() => {
+                  const params = new URLSearchParams({
+                    recreate: 'true',
+                    destination: story.destination,
+                    month: story.month,
+                    interests: JSON.stringify(story.interests),
+                    pages: story.pages.toString(),
+                    tone: story.tone,
+                    artStyle: story.artStylePreset,
+                    kids: JSON.stringify(story.kids),
+                  });
+                  navigate(`/new?${params.toString()}`);
+                }}
                 variant="outline"
                 size="lg"
                 className="shrink-0"

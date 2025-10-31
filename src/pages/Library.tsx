@@ -3,8 +3,20 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Calendar, MapPin } from 'lucide-react';
+import { BookOpen, Calendar, MapPin, Trash2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Story {
   id: string;
@@ -18,6 +30,7 @@ interface Story {
 const Library = () => {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchStories = async () => {
@@ -35,6 +48,35 @@ const Library = () => {
 
     fetchStories();
   }, []);
+
+  const handleDeleteStory = async (storyId: string, storyTitle: string) => {
+    try {
+      const { error } = await supabase
+        .from('stories')
+        .delete()
+        .eq('id', storyId);
+
+      if (error) throw error;
+
+      // Remove from local state
+      setStories(stories.filter(s => s.id !== storyId));
+      
+      // Clear from localStorage if exists
+      localStorage.removeItem(`story-${storyId}`);
+
+      toast({
+        title: "Story deleted",
+        description: `"${storyTitle}" has been removed from your library.`,
+      });
+    } catch (error) {
+      console.error('Error deleting story:', error);
+      toast({
+        title: "Failed to delete story",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -76,8 +118,8 @@ const Library = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {stories.map((story) => (
               <Card key={story.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <Link to={`/story/${story.id}`}>
-                  <div className="p-6">
+                <div className="p-6">
+                  <Link to={`/story/${story.id}`}>
                     <h3 className="text-xl font-semibold mb-3 text-foreground line-clamp-2">
                       {story.title}
                     </h3>
@@ -94,8 +136,38 @@ const Library = () => {
                         Created {new Date(story.created_at).toLocaleDateString()}
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="w-full mt-4"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Story
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete "{story.title}" and all its pages. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteStory(story.id, story.title)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </Card>
             ))}
           </div>

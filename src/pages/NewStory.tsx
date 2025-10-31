@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +43,7 @@ interface Kid {
 const NewStory = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [destination, setDestination] = useState("");
   const [month, setMonth] = useState("");
   const [availableKids, setAvailableKids] = useState<Kid[]>([]);
@@ -54,6 +55,7 @@ const NewStory = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [customInterest, setCustomInterest] = useState("");
   const [kidInterests, setKidInterests] = useState<string[]>([]);
+  const [isRecreating, setIsRecreating] = useState(false);
 
   // Fetch available kids on mount
   useEffect(() => {
@@ -83,6 +85,46 @@ const NewStory = () => {
 
     fetchKids();
   }, [toast]);
+
+  // Check for recreate parameters and auto-populate
+  useEffect(() => {
+    const recreate = searchParams.get('recreate');
+    if (recreate === 'true' && availableKids.length > 0) {
+      const dest = searchParams.get('destination');
+      const mon = searchParams.get('month');
+      const interests = searchParams.get('interests');
+      const pages = searchParams.get('pages');
+      const tn = searchParams.get('tone');
+      const art = searchParams.get('artStyle');
+      const kids = searchParams.get('kids');
+
+      if (dest) setDestination(dest);
+      if (mon) setMonth(mon);
+      if (interests) setSelectedInterests(JSON.parse(interests));
+      if (pages) setPageCount(parseInt(pages));
+      if (tn) setTone(tn as "curious" | "adventurous" | "silly");
+      if (art) setArtStyle(art as "storybook-cozy" | "watercolor-soft" | "travel-sketch");
+      
+      if (kids) {
+        const kidsData = JSON.parse(kids);
+        // Match kid names to available kid IDs
+        const kidIds = availableKids
+          .filter(k => kidsData.some((kd: any) => kd.name === k.name))
+          .map(k => k.id);
+        setSelectedKidIds(kidIds);
+      }
+
+      setIsRecreating(true);
+    }
+  }, [searchParams, availableKids]);
+
+  // Auto-submit when recreating
+  useEffect(() => {
+    if (isRecreating && destination && month && selectedKidIds.length > 0 && selectedInterests.length > 0) {
+      setIsRecreating(false);
+      handleSubmit(new Event('submit') as any);
+    }
+  }, [isRecreating, destination, month, selectedKidIds, selectedInterests]);
 
   // Auto-populate interests when selected kids change
   useEffect(() => {
