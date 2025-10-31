@@ -597,7 +597,7 @@ const Story = () => {
                 </p>
               </div>
               <Button
-                onClick={() => navigate('/new-story')}
+                onClick={() => navigate('/new')}
                 variant="outline"
                 size="lg"
                 className="shrink-0"
